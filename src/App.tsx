@@ -1,9 +1,16 @@
 import { useRef, useState } from 'react';
 import { IRefPhaserGame, PhaserGame } from './PhaserGame';
 import { MainMenu } from './game/scenes/MainMenu';
+import { CaptureAndUploadScreen } from './ui/CaptureAndUploadScreen';
+
+type AppScreen = 'capture' | 'game';
 
 function App()
 {
+    // Current screen state - start with capture/upload screen
+    // Note: setCurrentScreen will be used in Step 3 to transition to game after successful upload
+    const [currentScreen, _setCurrentScreen] = useState<AppScreen>('capture');
+
     // The sprite can only be moved in the MainMenu Scene
     const [canMoveSprite, setCanMoveSprite] = useState(true);
 
@@ -80,6 +87,12 @@ function App()
         
     }
 
+    // Render capture & upload screen
+    if (currentScreen === 'capture') {
+        return <CaptureAndUploadScreen />;
+    }
+
+    // Render Phaser game (existing template code)
     return (
         <div id="app">
             <PhaserGame ref={phaserRef} currentActiveScene={currentScene} />
