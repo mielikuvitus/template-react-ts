@@ -3,6 +3,7 @@ import { Scene } from 'phaser';
 import { LevelLoader } from '../LevelLoader';
 import { LevelData } from '../types';
 import { SAMPLE_LEVEL } from '../sampleLevel';
+import { askNPC } from '../openai';
 
 export class Game extends Scene
 {
@@ -147,7 +148,13 @@ export class Game extends Scene
     onTextSubmit (text: string): void {
         console.log('Textbox submitted:', text);
         if (!text.trim()) return;
-        this.showSpeechBubble(text);
+
+        // Show a "thinking" bubble while waiting for the API
+        this.showSpeechBubble('...');
+
+        askNPC(text).then((reply) => {
+            this.showSpeechBubble(reply);
+        });
     }
 
     showSpeechBubble (text: string): void {
