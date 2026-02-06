@@ -1,6 +1,5 @@
 import { Boot } from './scenes/Boot';
 import { Game as MainGame } from './scenes/Game';
-import { MainMenu } from './scenes/MainMenu';
 import { AUTO, Game } from 'phaser';
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -18,7 +17,6 @@ const config: Phaser.Types.Core.GameConfig = {
     },
     scene: [
         Boot,
-        MainMenu,
         MainGame,
     ]
 };

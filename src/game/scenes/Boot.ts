@@ -16,6 +16,6 @@ export class Boot extends Scene
         gfx.generateTexture('player', 32, 32);
         gfx.destroy();
 
-        this.scene.start('MainMenu');
+        this.scene.start('Game');
     }
 }
