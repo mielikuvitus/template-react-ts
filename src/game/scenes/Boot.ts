@@ -7,16 +7,15 @@ export class Boot extends Scene
         super('Boot');
     }
 
-    preload ()
-    {
-        //  The Boot Scene is typically used to load in any assets you require for your Preloader, such as a game logo or background.
-        //  The smaller the file size of the assets, the better, as the Boot Scene itself has no preloader.
-
-        this.load.image('background', 'assets/bg.png');
-    }
-
     create ()
     {
-        this.scene.start('Preloader');
+        // Generate a simple player texture (32x32 colored square)
+        const gfx = this.make.graphics({ x: 0, y: 0 });
+        gfx.fillStyle(0x00ff88, 1);
+        gfx.fillRoundedRect(0, 0, 32, 32, 6);
+        gfx.generateTexture('player', 32, 32);
+        gfx.destroy();
+
+        this.scene.start('MainMenu');
     }
 }
