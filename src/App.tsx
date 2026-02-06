@@ -1,17 +1,15 @@
 import { useRef, useState } from 'react';
 import { IRefPhaserGame, PhaserGame } from './PhaserGame';
 import { MainMenu } from './game/scenes/MainMenu';
-import { CaptureScreen } from './ui/CaptureScreen';
-import { CaptureData } from './ui/CameraCapture';
+import { CaptureAndUploadScreen } from './ui/CaptureAndUploadScreen';
 
 type AppScreen = 'capture' | 'game';
 
 function App()
 {
-    // Current screen state - start with capture screen
-    const [currentScreen, setCurrentScreen] = useState<AppScreen>('capture');
-    // Captured data is stored for later use with AI proxy
-    const [_capturedData, setCapturedData] = useState<CaptureData | null>(null);
+    // Current screen state - start with capture/upload screen
+    // Note: setCurrentScreen will be used in Step 3 to transition to game after successful upload
+    const [currentScreen, _setCurrentScreen] = useState<AppScreen>('capture');
 
     // The sprite can only be moved in the MainMenu Scene
     const [canMoveSprite, setCanMoveSprite] = useState(true);
@@ -19,17 +17,6 @@ function App()
     //  References to the PhaserGame component (game and scene are exposed)
     const phaserRef = useRef<IRefPhaserGame | null>(null);
     const [spritePosition, setSpritePosition] = useState({ x: 0, y: 0 });
-
-    // Handle capture completion - transition to game screen
-    const handleCaptureNext = (data: CaptureData) => {
-        setCapturedData(data);
-        setCurrentScreen('game');
-        // The captured data (data.compressedBlob) can be uploaded to AI proxy later
-        console.log('Captured image ready for AI proxy:', {
-            blobSize: data.compressedBlob.size,
-            dimensions: `${data.width}x${data.height}`
-        });
-    };
 
     const changeScene = () => {
 
@@ -100,9 +87,9 @@ function App()
         
     }
 
-    // Render capture screen
+    // Render capture & upload screen
     if (currentScreen === 'capture') {
-        return <CaptureScreen onNext={handleCaptureNext} />;
+        return <CaptureAndUploadScreen />;
     }
 
     // Render Phaser game (existing template code)

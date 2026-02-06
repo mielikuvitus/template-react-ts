@@ -11,14 +11,18 @@ export interface CaptureData {
 
 interface CameraCaptureProps {
     onCapture?: (data: CaptureData) => void;
+    onRetake?: () => void;
     maxSize?: number;
     quality?: number;
+    showDebugInfo?: boolean;
 }
 
 export function CameraCapture({ 
-    onCapture, 
+    onCapture,
+    onRetake,
     maxSize = 1024, 
-    quality = 0.75 
+    quality = 0.75,
+    showDebugInfo = false,
 }: CameraCaptureProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -100,7 +104,12 @@ export function CameraCapture({
         if (inputRef.current) {
             inputRef.current.value = '';
         }
-    }, [previewUrl]);
+
+        // Notify parent
+        if (onRetake) {
+            onRetake();
+        }
+    }, [previewUrl, onRetake]);
 
     const triggerCapture = useCallback(() => {
         inputRef.current?.click();
@@ -159,36 +168,38 @@ export function CameraCapture({
                         🔄 Retake Photo
                     </button>
 
-                    {/* Debug info */}
-                    <div className="camera-capture__debug">
-                        <h4 className="camera-capture__debug-title">Image Info</h4>
-                        <ul className="camera-capture__debug-list">
-                            <li className="camera-capture__debug-item">
-                                <span className="camera-capture__debug-label">Original size:</span>
-                                <span className="camera-capture__debug-value">
-                                    {bytesToKb(captureData.originalFile.size)} KB
-                                </span>
-                            </li>
-                            <li className="camera-capture__debug-item">
-                                <span className="camera-capture__debug-label">Compressed size:</span>
-                                <span className="camera-capture__debug-value">
-                                    {bytesToKb(captureData.compressedBlob.size)} KB
-                                </span>
-                            </li>
-                            <li className="camera-capture__debug-item">
-                                <span className="camera-capture__debug-label">Dimensions:</span>
-                                <span className="camera-capture__debug-value">
-                                    {captureData.width} × {captureData.height}
-                                </span>
-                            </li>
-                            <li className="camera-capture__debug-item">
-                                <span className="camera-capture__debug-label">Compression:</span>
-                                <span className="camera-capture__debug-value">
-                                    {Math.round((1 - captureData.compressedBlob.size / captureData.originalFile.size) * 100)}% saved
-                                </span>
-                            </li>
-                        </ul>
-                    </div>
+                    {/* Debug info - controlled by showDebugInfo prop */}
+                    {showDebugInfo && (
+                        <div className="camera-capture__debug">
+                            <h4 className="camera-capture__debug-title">Image Info</h4>
+                            <ul className="camera-capture__debug-list">
+                                <li className="camera-capture__debug-item">
+                                    <span className="camera-capture__debug-label">Original size:</span>
+                                    <span className="camera-capture__debug-value">
+                                        {bytesToKb(captureData.originalFile.size)} KB
+                                    </span>
+                                </li>
+                                <li className="camera-capture__debug-item">
+                                    <span className="camera-capture__debug-label">Compressed size:</span>
+                                    <span className="camera-capture__debug-value">
+                                        {bytesToKb(captureData.compressedBlob.size)} KB
+                                    </span>
+                                </li>
+                                <li className="camera-capture__debug-item">
+                                    <span className="camera-capture__debug-label">Dimensions:</span>
+                                    <span className="camera-capture__debug-value">
+                                        {captureData.width} × {captureData.height}
+                                    </span>
+                                </li>
+                                <li className="camera-capture__debug-item">
+                                    <span className="camera-capture__debug-label">Compression:</span>
+                                    <span className="camera-capture__debug-value">
+                                        {Math.round((1 - captureData.compressedBlob.size / captureData.originalFile.size) * 100)}% saved
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
