@@ -16,6 +16,9 @@ export class Game extends Scene
     textboxOpen: boolean = false;
     inputElement: HTMLInputElement | null = null;
     inputContainer: HTMLDivElement | null = null;
+    npc: Phaser.Physics.Arcade.Sprite;
+    speechBubbleBg: Phaser.GameObjects.Graphics | null = null;
+    speechBubbleText: Phaser.GameObjects.Text | null = null;
 
     constructor ()
     {
@@ -143,7 +146,63 @@ export class Game extends Scene
 
     onTextSubmit (text: string): void {
         console.log('Textbox submitted:', text);
-        // TODO: handle submitted text (e.g. send to OpenAI API)
+        if (!text.trim()) return;
+        this.showSpeechBubble(text);
+    }
+
+    showSpeechBubble (text: string): void {
+        // Remove previous bubble if any
+        this.speechBubbleBg?.destroy();
+        this.speechBubbleText?.destroy();
+
+        // Measure text to size the bubble
+        const padding = 12;
+        const maxWidth = 200;
+        const tempText = this.add.text(0, 0, text, {
+            fontFamily: 'Arial', fontSize: 14, color: '#ffffff',
+            wordWrap: { width: maxWidth }
+        });
+        const textW = tempText.width;
+        const textH = tempText.height;
+        tempText.destroy();
+
+        const bubbleW = textW + padding * 2;
+        const bubbleH = textH + padding * 2;
+        const tailH = 10;
+
+        // Position bubble above the NPC
+        const bx = this.npc.x - bubbleW / 2;
+        const by = this.npc.y - 32 - bubbleH - tailH;
+
+        // Draw bubble background
+        const gfx = this.add.graphics();
+        gfx.fillStyle(0x222244, 0.9);
+        gfx.fillRoundedRect(bx, by, bubbleW, bubbleH, 8);
+        gfx.lineStyle(2, 0x4488ff, 1);
+        gfx.strokeRoundedRect(bx, by, bubbleW, bubbleH, 8);
+        // Tail triangle pointing down to NPC
+        gfx.fillStyle(0x222244, 0.9);
+        gfx.fillTriangle(
+            this.npc.x - 6, by + bubbleH,
+            this.npc.x + 6, by + bubbleH,
+            this.npc.x, by + bubbleH + tailH
+        );
+        gfx.setDepth(200);
+        this.speechBubbleBg = gfx;
+
+        // Draw text inside bubble
+        this.speechBubbleText = this.add.text(bx + padding, by + padding, text, {
+            fontFamily: 'Arial', fontSize: 14, color: '#ffffff',
+            wordWrap: { width: maxWidth }
+        }).setDepth(201);
+
+        // Auto-hide after 4 seconds
+        this.time.delayedCall(4000, () => {
+            this.speechBubbleBg?.destroy();
+            this.speechBubbleText?.destroy();
+            this.speechBubbleBg = null;
+            this.speechBubbleText = null;
+        });
     }
 
     /** Build the level from a LevelData object */
@@ -157,6 +216,16 @@ export class Game extends Scene
             'player'
         );
         this.player.setCollideWorldBounds(true);
+
+        // Create AI NPC (blue square) near the right side of the level
+        this.npc = this.physics.add.sprite(512, this.level.playerSpawn.y, 'npc');
+        this.npc.setCollideWorldBounds(true);
+        this.physics.add.collider(this.npc, this.level.platforms);
+
+        // NPC label
+        this.add.text(512, this.level.playerSpawn.y - 28, 'AI NPC', {
+            fontFamily: 'Arial', fontSize: 11, color: '#4488ff'
+        }).setOrigin(0.5);
 
         // Apply gravity rule if present
         const gravScale = this.level.getRule('low_grav_in_dark', 1.0);

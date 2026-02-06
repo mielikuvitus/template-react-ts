@@ -28,6 +28,13 @@ export class Boot extends Scene
         pickupGfx.fillStyle(0xffdd44, 1);
         pickupGfx.fillCircle(8, 8, 8);
         pickupGfx.generateTexture('pickup', 16, 16);
+
+        // Generate NPC texture (32x32 blue square)
+        const npcGfx = this.make.graphics({ x: 0, y: 0 });
+        npcGfx.fillStyle(0x4488ff, 1);
+        npcGfx.fillRoundedRect(0, 0, 32, 32, 6);
+        npcGfx.generateTexture('npc', 32, 32);
+        npcGfx.destroy();
         pickupGfx.destroy();
 
         this.scene.start('Game');
