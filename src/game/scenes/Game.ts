@@ -18,6 +18,7 @@ export class Game extends Scene
     inputElement: HTMLInputElement | null = null;
     inputContainer: HTMLDivElement | null = null;
     npc: Phaser.Physics.Arcade.Sprite;
+    npcLabel: Phaser.GameObjects.Text;
     speechBubbleBg: Phaser.GameObjects.Graphics | null = null;
     speechBubbleText: Phaser.GameObjects.Text | null = null;
 
@@ -203,12 +204,23 @@ export class Game extends Scene
             wordWrap: { width: maxWidth }
         }).setDepth(201);
 
-        // Auto-hide after 4 seconds
-        this.time.delayedCall(4000, () => {
-            this.speechBubbleBg?.destroy();
-            this.speechBubbleText?.destroy();
-            this.speechBubbleBg = null;
-            this.speechBubbleText = null;
+        // Auto-hide: stay for 15 seconds, then fade out over 2 seconds
+        this.time.delayedCall(15000, () => {
+            const targets = [this.speechBubbleBg, this.speechBubbleText].filter(Boolean);
+            if (targets.length > 0) {
+                this.tweens.add({
+                    targets,
+                    alpha: 0,
+                    duration: 2000,
+                    ease: 'Power2',
+                    onComplete: () => {
+                        this.speechBubbleBg?.destroy();
+                        this.speechBubbleText?.destroy();
+                        this.speechBubbleBg = null;
+                        this.speechBubbleText = null;
+                    }
+                });
+            }
         });
     }
 
@@ -230,7 +242,7 @@ export class Game extends Scene
         this.physics.add.collider(this.npc, this.level.platforms);
 
         // NPC label
-        this.add.text(512, this.level.playerSpawn.y - 28, 'AI NPC', {
+        this.npcLabel = this.add.text(512, this.level.playerSpawn.y - 28, 'AI NPC', {
             fontFamily: 'Arial', fontSize: 11, color: '#4488ff'
         }).setOrigin(0.5);
 
@@ -301,6 +313,11 @@ export class Game extends Scene
 
         // Update patrol enemies
         this.level.updateEnemies();
+
+        // Keep NPC label following the NPC
+        if (this.npc && this.npcLabel) {
+            this.npcLabel.setPosition(this.npc.x, this.npc.y - 28);
+        }
     }
 
     changeScene ()
