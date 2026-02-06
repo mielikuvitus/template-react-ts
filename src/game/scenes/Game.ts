@@ -13,6 +13,9 @@ export class Game extends Scene
     level: LevelLoader;
     scoreText: Phaser.GameObjects.Text;
     score: number = 0;
+    textboxOpen: boolean = false;
+    inputElement: HTMLInputElement | null = null;
+    inputContainer: HTMLDivElement | null = null;
 
     constructor ()
     {
@@ -52,7 +55,95 @@ export class Game extends Scene
             fontFamily: 'Arial', fontSize: 16, color: '#ffffff'
         });
 
+        // H key to toggle textbox
+        this.input.keyboard!.on('keydown-H', () => {
+            if (!this.textboxOpen) {
+                this.openTextbox();
+            }
+        });
+
         EventBus.emit('current-scene-ready', this);
+    }
+
+    openTextbox (): void {
+        this.textboxOpen = true;
+        // Disable game keyboard input while typing
+        this.input.keyboard!.enabled = false;
+
+        // Create overlay container
+        const container = document.createElement('div');
+        container.style.cssText = `
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+            background: rgba(0,0,0,0.5); z-index: 1000;
+        `;
+
+        const box = document.createElement('div');
+        box.style.cssText = `
+            background: #1a1a2e; border: 2px solid #4488aa; border-radius: 8px;
+            padding: 20px; display: flex; flex-direction: column; gap: 12px;
+            min-width: 400px;
+        `;
+
+        const label = document.createElement('div');
+        label.textContent = 'Enter text (Enter to submit, Esc to cancel)';
+        label.style.cssText = 'color: #aaa; font-family: Arial; font-size: 14px;';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.style.cssText = `
+            background: #0d0d1a; color: #ffffff; border: 1px solid #4488aa;
+            border-radius: 4px; padding: 10px 14px; font-size: 16px;
+            font-family: Arial; outline: none; width: 100%; box-sizing: border-box;
+        `;
+        input.placeholder = 'Type here...';
+
+        box.appendChild(label);
+        box.appendChild(input);
+        container.appendChild(box);
+
+        // Mount into the game container div
+        const gameContainer = this.game.canvas.parentElement!;
+        gameContainer.style.position = 'relative';
+        gameContainer.appendChild(container);
+
+        this.inputElement = input;
+        this.inputContainer = container;
+
+        input.focus();
+
+        input.addEventListener('keydown', (e: KeyboardEvent) => {
+            e.stopPropagation();
+            if (e.key === 'Enter') {
+                const text = input.value;
+                this.closeTextbox();
+                this.onTextSubmit(text);
+            } else if (e.key === 'Escape') {
+                this.closeTextbox();
+            }
+        });
+
+        // Close if clicking outside the box
+        container.addEventListener('mousedown', (e: MouseEvent) => {
+            if (e.target === container) {
+                this.closeTextbox();
+            }
+        });
+    }
+
+    closeTextbox (): void {
+        if (this.inputContainer) {
+            this.inputContainer.remove();
+            this.inputContainer = null;
+            this.inputElement = null;
+        }
+        this.textboxOpen = false;
+        this.input.keyboard!.enabled = true;
+    }
+
+    onTextSubmit (text: string): void {
+        console.log('Textbox submitted:', text);
+        // TODO: handle submitted text (e.g. send to OpenAI API)
     }
 
     /** Build the level from a LevelData object */
