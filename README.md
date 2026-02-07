@@ -1,31 +1,54 @@
-# Scene Generator - Mobile Photo to Game Level
+# Reality Jump - Photo to Platformer Game
 
-A mobile browser game that converts photos into playable game levels using AI-powered scene generation. Built with React, TypeScript, Phaser 3, and Vite.
+A mobile browser game that converts real-world photos into playable platformer levels using AI-powered scene generation. Take a photo of your surroundings and watch it transform into a game level where tables become platforms, fruits become collectibles, and everyday objects become obstacles.
 
-## Project Overview
+Built with React, TypeScript, Phaser 3, and Vite.
 
-```
-User uploads photo
-    ↓
-CUA+SAM: Segment all objects/surfaces with coordinates
-    ↓
-GPT-4 Vision: "Table edge = platform, plant = obstacle, mug = coin"
-    ↓
-Generate Phaser.js game with:
-  - Platforms at detected coordinates
-  - Obstacles/collectibles from labeled objects
-  - Physics based on real image layout
+## How It Works
 
 ```
+User takes a photo on mobile
+    ↓
+Photo is compressed and uploaded to backend
+    ↓
+AI analyzes the image: detects objects, surfaces, and layout
+    ↓
+Returns Scene JSON with normalized coordinates + game roles
+    (e.g. table edge → platform, apple → collectible, candle → hazard)
+    ↓
+Zod validates the response against the SceneV1 schema
+    ↓
+Preview screen shows detected objects overlaid on the photo
+    ↓
+Phaser 3 generates a playable platformer level:
+  - Platforms placed at detected object coordinates
+  - Pickups and exit spawned from AI-determined locations
+  - Adaptive physics tuned to the level geometry
+    ↓
+Player reaches the exit flag → Win!
+```
 
-**Current Status: MVP Step 2.5 - Photo Capture & Upload Flow**
+## Current Status
 
-The app flow:
+**Playable end-to-end.** The full loop works: capture a photo, upload it, preview the detected objects, and play a platformer level generated from the photo.
 
-1. **Capture**: User takes a photo on mobile device
-2. **Upload**: Photo is compressed and sent to backend
-3. **Generate**: Backend analyzes photo and returns Scene JSON
-4. **Play**: (Coming in Step 3) Scene JSON creates a playable Phaser level
+**Implemented:**
+
+- Photo capture and compression on mobile
+- Backend upload with request tracing
+- Zod schema validation of AI responses
+- Level preview with debug overlays
+- Platformer gameplay with physics, pickups, scoring, and win condition
+- Mobile touch controls + keyboard support
+- Adaptive jump height based on level geometry
+- Runtime icon generation (no external game assets needed)
+
+**Not yet implemented:**
+
+- Enemies / hazards in gameplay (schema supports them, factories are stubs)
+- Obstacle collision
+- ECS-style systems (files exist as stubs)
+- Real AI integration (backend returns hardcoded scene data)
 
 ## Quick Start
 
@@ -44,73 +67,167 @@ Open on mobile: Check terminal for `Network:` URL (e.g., `http://192.168.1.x:808
 
 ## Available Commands
 
-| Command           | Description                        |
-| ----------------- | ---------------------------------- |
-| `npm install`     | Install project dependencies       |
-| `npm run dev`     | Launch frontend dev server         |
-| `npm run dev:all` | Launch frontend + backend together |
-| `npm run server`  | Launch backend only (port 3001)    |
-| `npm run build`   | Create production build            |
+| Command             | Description                        |
+| ------------------- | ---------------------------------- |
+| `npm install`       | Install project dependencies       |
+| `npm run dev`       | Launch frontend dev server         |
+| `npm run dev:all`   | Launch frontend + backend together |
+| `npm run server`    | Launch backend only (port 3001)    |
+| `npm run build`     | Create production build            |
+| `npm run test`      | Run tests (Vitest)                 |
+| `npm run test:watch` | Run tests in watch mode           |
+
+## Game Flow
+
+1. **Capture** - User takes a photo using the mobile camera
+2. **Upload** - Photo is compressed (max 1024px, JPEG 0.75) and sent to the backend
+3. **Validate** - Backend response is validated against the Zod SceneV1 schema
+4. **Preview** - Detected objects are shown overlaid on the photo with color-coded bounding boxes
+5. **Play** - Phaser creates a platformer level; player navigates platforms, collects pickups, reaches the exit
+6. **Win** - Score screen with options to replay or take a new photo
 
 ## Project Structure
 
-### Frontend (React + TypeScript)
+### UI Layer (React)
 
-| Path                                       | Description                               |
-| ------------------------------------------ | ----------------------------------------- |
-| `src/App.tsx`                              | Main app, renders CaptureAndUploadScreen  |
-| `src/ui/CaptureAndUploadScreen.tsx`        | Orchestrates capture → upload flow        |
-| `src/ui/CameraCapture.tsx`                 | Mobile camera access + image compression  |
-| `src/ui/UploadFlow.tsx`                    | Upload state machine + dev toggles        |
-| `src/ui/screens/`                          | Loading, Success, Error screen components |
-| `src/services/ai_proxy_service.ts`         | Backend API client                        |
-| `src/services/image_processing_service.ts` | Image downscaling utilities               |
-| `src/services/request_trace.ts`            | Request ID generation for logging         |
+| Path | Description |
+| --- | --- |
+| `src/App.tsx` | Root component, renders CaptureAndUploadScreen |
+| `src/ui/CaptureAndUploadScreen.tsx` | Orchestrates the capture → upload flow |
+| `src/ui/CaptureScreen.tsx` | Photo capture interface |
+| `src/ui/CameraCapture.tsx` | Mobile camera access + image compression |
+| `src/ui/UploadFlow.tsx` | Upload state machine (idle → loading → success/error) |
+| `src/ui/PreviewScreen.tsx` | Level preview with debug toggle overlay |
+| `src/ui/PlayScreen.tsx` | Gameplay screen with score display |
+| `src/ui/MobileControls.tsx` | Touch-friendly left/right/jump buttons |
+| `src/ui/WinOverlay.tsx` | Victory screen with score and replay options |
+| `src/ui/ValidationErrorScreen.tsx` | Displays Zod validation errors |
+| `src/ui/GameContainer.tsx` | Wraps the Phaser game instance |
+| `src/ui/screens/` | Loading, Success, Error screen components |
 
-### Backend (Express + TypeScript)
+### Game Engine (Phaser 3)
 
-| Path                     | Description                                     |
-| ------------------------ | ----------------------------------------------- |
-| `server/index.ts`        | Express server entry point                      |
-| `server/routes/scene.ts` | POST /api/scene endpoint (dummy implementation) |
-| `server/tsconfig.json`   | Backend TypeScript config                       |
+| Path | Description |
+| --- | --- |
+| `src/game/scenes/GameScene.ts` | Main gameplay scene - physics, player, platforms, pickups, exit |
+| `src/game/scenes/PreviewScene.ts` | Preview scene - renders debug overlays on photo |
+| `src/game/factories/PlatformFactory.ts` | Creates static platform zones from scene data |
+| `src/game/factories/PlayerFactory.ts` | Creates the player sprite with collision body |
+| `src/game/factories/PickupFactory.ts` | Creates coin and health pickup sprites |
+| `src/game/factories/ExitFactory.ts` | Creates the exit flag goal sprite |
+| `src/game/factories/EnemyFactory.ts` | Enemy factory (stub) |
+| `src/game/assets/IconTextureFactory.ts` | Runtime Canvas-based sprite generation (no external assets) |
+| `src/game/assets/lucide_icon_map.ts` | SVG path data for game icons |
+| `src/game/physics/PhysicsConfig.ts` | Adaptive physics calculations (jump height, speed) |
+| `src/game/physics/CollisionLayers.ts` | Collision layer definitions |
+| `src/game/input/InputState.ts` | Shared input state between React and Phaser |
+| `src/game/utils/coords.ts` | Normalized → world coordinate conversion |
+| `src/game/debug/DebugOverlay.ts` | Debug bounding box and spawn marker rendering |
+| `src/game/debug/DebugRenderer.ts` | Debug rendering utilities |
+| `src/game/events/EventBus.ts` | React ↔ Phaser event bridge |
+| `src/game/events/GameEvents.ts` | Game event type definitions |
+
+### Shared Schema & Types
+
+| Path | Description |
+| --- | --- |
+| `src/shared/schema/scene_v1.schema.ts` | Zod schema for SceneV1 validation |
+| `src/shared/schema/scene_v1.types.ts` | TypeScript types derived from schema |
+| `src/shared/schema/SceneV1.ts` | SceneV1 type re-exports |
+| `src/shared/schema/scene_v1.schema.test.ts` | Schema validation tests |
+| `src/shared/types/` | Type stubs (Detection, RuleModifier, Spawn, Surface) |
+
+### Services
+
+| Path | Description |
+| --- | --- |
+| `src/services/ai_proxy_service.ts` | Backend API client (`uploadImageForScene`) |
+| `src/services/image_processing_service.ts` | Image downscaling (max 1024px, JPEG 0.75) |
+| `src/services/request_trace.ts` | Request ID generation for cross-service logging |
+
+### Backend (Express)
+
+| Path | Description |
+| --- | --- |
+| `server/index.ts` | Express server (port 3001), CORS, health check |
+| `server/routes/scene.ts` | `POST /api/scene` - multipart upload, returns hardcoded scene JSON |
+| `server/tsconfig.json` | Backend TypeScript config |
+
+### Stub Files (Planned Architecture)
+
+These files exist but are currently empty, representing planned ECS-style systems:
+
+| Path | Description |
+| --- | --- |
+| `src/game/systems/` | CollisionSystem, EnemySystem, MovementSystem, RuleModifiersSystem, SpawnSystem |
+| `src/game/entities/` | Player, Enemy, Pickup entity classes |
+| `src/game/generation/` | SceneGenerator, PlatformDeriver, SeededRng |
+| `src/game/state/` | GameStateMachine |
+| `src/game/controllers/` | GameFlowController |
+| `src/game/scenes/` (stubs) | BootScene, CaptureScene, GenerateScene, EndScene, PlayScene |
 
 ### Documentation
 
-| Path                       | Description                            |
-| -------------------------- | -------------------------------------- |
-| `docs/backend_contract.md` | **API specification for backend team** |
-| `docs/testing_upload.md`   | Testing guide with curl examples       |
+| Path | Description |
+| --- | --- |
+| `docs/backend_contract.md` | API specification for backend team |
+| `docs/testing_upload.md` | Testing guide with curl examples |
+
+## Scene Data Format (SceneV1)
+
+The AI returns a JSON object describing detected objects and spawn points. All coordinates are **normalized** (0.0 to 1.0).
+
+### Schema Structure
+
+```json
+{
+  "version": 1,
+  "image": { "w": 4032, "h": 3024 },
+  "objects": [
+    {
+      "id": "table_01",
+      "type": "platform",
+      "label": "table",
+      "confidence": 0.85,
+      "bounds_normalized": { "x": 0.1, "y": 0.6, "w": 0.4, "h": 0.05 },
+      "surface_type": "solid"
+    }
+  ],
+  "spawns": {
+    "player": { "x": 0.1, "y": 0.5 },
+    "exit": { "x": 0.9, "y": 0.3 },
+    "enemies": [],
+    "pickups": [{ "x": 0.5, "y": 0.4, "type": "coin" }]
+  },
+  "rules": []
+}
+```
+
+### Object Types & Caps
+
+| Type | Max Count | Status |
+| --- | --- | --- |
+| `platform` | 12 | Implemented |
+| `obstacle` | 8 | Schema only |
+| `collectible` | 10 | Schema only |
+| `hazard` | 8 | Schema only |
+| `decoration` | 25 | Schema only |
+
+Maximum total objects: **25**
+
+### Surface Types
+
+`solid`, `bouncy`, `slippery`, `breakable`
+
+### Pickup Types
+
+`coin` (+1 score), `health` (+5 score)
 
 ## For Backend Developer
 
 **Start here:** `docs/backend_contract.md`
 
-This file contains:
-
-- API endpoint specification (POST /api/scene)
-- Request/response format
-- CORS configuration
-- curl test commands
-- Logging recommendations
-
-### Backend-Related Files
-
-```
-docs/
-├── backend_contract.md      # API specification (START HERE)
-└── testing_upload.md        # Testing guide
-
-server/
-├── index.ts                 # Express server setup
-├── routes/scene.ts          # Dummy endpoint (replace with real AI)
-└── tsconfig.json            # TypeScript config
-
-src/services/
-└── ai_proxy_service.ts      # Frontend client (shows expected API format)
-```
-
-### Quick Test with curl
+### Quick Test
 
 ```bash
 # Start backend
@@ -122,368 +239,105 @@ curl -i -X POST "http://localhost:3001/api/scene" \
   -F "image=@photo.jpg"
 ```
 
-### AI Structured Response Example in JSON
+### Backend Files
 
-## Overview
+```
+server/
+├── index.ts              # Express server setup (port 3001)
+├── routes/scene.ts       # POST /api/scene (hardcoded response, replace with AI)
+└── tsconfig.json
 
-The AI returns a single JSON object describing detected items in the photo and how each item should behave in-game. Each item is an entry in `objects[]`. The game uses `bounds_normalized` as the source of truth and converts to world coordinates deterministically.
+docs/
+├── backend_contract.md   # API spec (START HERE)
+└── testing_upload.md     # Testing guide
 
-## Top-level
-
-```json
-{
-  "version": 1,
-  "image": { "width": 4032, "height": 3024 },
-  "objects": []
-}
-
-{
-  "id": "pillow_01",
-  "type": "platform",
-  "label": "pillow",
-  "confidence": 0.78,
-  "bounds_normalized": { "x": 0.15, "y": 0.42, "width": 0.25, "height": 0.10 },
-  "properties": { },
-  "game_mechanics": { }
-}
+src/services/
+└── ai_proxy_service.ts   # Frontend client (shows expected API format)
 ```
 
-## Example JSON
+### Endpoint Details
 
-```json
-{
-    "version": 1,
-    "image": { "width": 4032, "height": 3024 },
-    "objects": [
-        {
-            "id": "pillow_01",
-            "type": "platform",
-            "label": "pillow",
-            "confidence": 0.78,
-            "bounds_normalized": {
-                "x": 0.15,
-                "y": 0.42,
-                "width": 0.25,
-                "height": 0.1
-            },
-            "properties": { "surface_type": "soft" },
-            "game_mechanics": {
-                "is_solid": true,
-                "player_speed_multiplier": 0.6,
-                "jump_height_multiplier": 1.2,
-                "friction": 0.3,
-                "bounciness": 0.6
-            }
-        },
-        {
-            "id": "apple_01",
-            "type": "collectible",
-            "label": "apple",
-            "confidence": 0.72,
-            "bounds_normalized": {
-                "x": 0.62,
-                "y": 0.38,
-                "width": 0.06,
-                "height": 0.08
-            },
-            "properties": { "category": "food", "edible": true },
-            "game_mechanics": {
-                "pickup_type": "health_pack",
-                "health_restore": 20
-            }
-        }
-    ]
-}
-```
+- **Endpoint:** `POST /api/scene`
+- **Content-Type:** `multipart/form-data`
+- **Field:** `image` (max 10MB, image/* only)
+- **Header:** `x-request-id` (optional, for tracing)
+- **Response:** SceneV1 JSON or error JSON
+- **CORS:** `localhost:5173`, `localhost:8080`
 
-## Object schema
+## Key Architecture Decisions
 
-Each entry in `objects[]` must include the following fields:
+### Runtime Icon Generation
 
-- `id`  
-  Unique string identifier within the response.
+Game sprites (player, exit, coin, health) are generated at runtime using the Canvas 2D API. No external image assets are needed for gameplay -- the `IconTextureFactory` draws shapes programmatically and caches them in Phaser's texture manager.
 
-- `type`  
-  One of the allowed object types (see enums below).
+### Adaptive Physics
 
-- `label`  
-  Human-readable object name (e.g. pillow, table, apple).
+Jump height automatically adapts to the level geometry. The engine analyzes the largest vertical gap between platforms and sets jump height to clear it with a 15% margin (clamped between 15-45% of world height). This ensures every generated level is completable.
 
-- `confidence`  
-  Float between `0.0` and `1.0`.
+### Normalized Coordinates
 
-- `bounds_normalized`  
-  Normalized bounding box.
+All positions from the AI use normalized coordinates (0.0 to 1.0). The game world matches the photo's aspect ratio, and `coords.ts` converts normalized values to world pixels. This makes levels work at any resolution.
 
-- `properties`  
-  Descriptive, non-behavioral metadata.
+### React ↔ Phaser Bridge
 
-- `game_mechanics`  
-  Gameplay-relevant behavior modifiers.
+An `EventBus` (Phaser EventEmitter) bridges React and Phaser. Mobile controls write to a shared `InputState` object that Phaser reads each frame. Game events (`game-won`, `score-update`, `toggle-debug`) flow from Phaser to React.
 
----
+### Schema Validation
 
-## Normalized bounds (critical)
-
-`bounds_normalized` is the **source of truth**.
-
-Fields:
-
-- `x` – left offset (0.0 → 1.0)
-- `y` – top offset (0.0 → 1.0)
-- `width` – width (0.0 → 1.0)
-- `height` – height (0.0 → 1.0)
-
-Rules:
-
-- All values must be floats between `0.0` and `1.0`
-- `(x, y)` is the top-left corner
-- `width` and `height` must be greater than 0
-- The box must fit inside the image:
-    - `x + width <= 1.0`
-    - `y + height <= 1.0`
-
-The game engine converts these values into world coordinates.
-
-## Allowed values for type
-
-Object type enum
-
-- platform
-- obstacle
-- collectible
-- hazard
-- decoration
-
-## Property enums
-
-### Surface type (platform / obstacle / hazard)
-
-Allowed values:
-
-- hard
-- soft
-- slippery
-- sticky
-
-## Gameplay mechanic enums
-
-### Collectibles
-
-- `pickup_type`:
-    - coin
-    - health_pack
-
-### Hazards
-
-- `damage_type`:
-    - touch_damage
-    - damage_zone
-
----
-
-## Gameplay value clamping (engine-enforced)
-
-The AI may suggest values, but the game engine must clamp them.
-
-### Movement & physics
-
-- player_speed_multiplier: 0.5 → 1.2
-- jump_height_multiplier: 0.7 → 1.4
-- friction: 0.0 → 1.0
-- bounciness: 0.0 → 0.8
-
-### Collectibles
-
-- health_restore: 0 → 50
-
-### Hazards
-
-- damage_amount: 1 → 50
-- slow_multiplier: 0.4 → 1.0
-
-## Type-specific rules
-
-### Platforms
-
-Required:
-
-- properties.surface_type
-
-Allowed mechanics:
-
-- is_solid (boolean, default true)
-- player_speed_multiplier
-- jump_height_multiplier
-- friction
-- bounciness
-
-### Obstacles
-
-Allowed mechanics:
-
-- is_solid
-- optional damage_amount
-
-### Collectibles
-
-Required:
-
-- game_mechanics.pickup_type
-
-Allowed mechanics:
-
-- health_restore (only if pickup_type is health_pack)
-
-### Hazards
-
-Required:
-
-- game_mechanics.damage_type
-- game_mechanics.damage_amount
-
-Allowed mechanics:
-
-- slow_multiplier
-
-### Decorations
-
-- No gameplay mechanics required
-- Safe for the engine to ignore
-
----
-
-## Hard caps (AI must respect)
-
-- Maximum total objects: 25
-- Maximum per type:
-    - platform: 12
-    - obstacle: 8
-    - collectible: 10
-    - hazard: 8
-    - decoration: 25
-
-If more objects are detected, the AI should return the most visually prominent ones.
-
-## AI output rules (strict)
-
-- Return valid JSON only
-- No comments, markdown, or explanations
-- Use only enums defined in this document
-- Always include image.width and image.height
-- Prefer normalized bounds
-- Respect all caps and ranges
-
----
+All backend responses are validated with Zod before reaching the game engine. Invalid data shows a `ValidationErrorScreen` with specific errors rather than crashing.
 
 ## Dev Panel (Development Mode)
 
-A floating panel appears in the bottom-right corner during development with these toggles:
+A floating panel appears in the bottom-right corner during development:
 
-**Backend section:**
-
-- **Demo Random**: 50/50 chance to show fake error after real success (for testing error UI)
-- **Mock Fallback**: Try backend first, fall back to mock data on error (for demos)
-
-**No Backend section:**
-
-- **Mock Mode**: Skip backend entirely, always return mock data
-
-**Display:**
-
-- **Image Info**: Show compression stats after photo capture
+| Toggle | Description |
+| --- | --- |
+| **Demo Random** | 50/50 chance of fake error after real success (test error UI) |
+| **Mock Fallback** | Try backend first, fall back to mock data on error |
+| **Mock Mode** | Skip backend entirely, always return mock data |
+| **Image Info** | Show compression stats after photo capture |
 
 ## Tech Stack
 
-- **Frontend**: React 19, TypeScript 5.7, Vite 6.3
-- **Game Engine**: Phaser 3.90
-- **Backend**: Express, Multer (multipart uploads)
-- **Styling**: Vanilla CSS with glassmorphism
-- **Icons**: React Lucide
+| Layer | Technology |
+| --- | --- |
+| **Frontend** | React 19, TypeScript 5.7, Vite 6.3 |
+| **Game Engine** | Phaser 3.90 (Arcade Physics) |
+| **Validation** | Zod |
+| **Backend** | Express, Multer (multipart uploads) |
+| **Testing** | Vitest |
+| **Styling** | Vanilla CSS with glassmorphism |
+| **Icons** | Lucide React (UI), Canvas-drawn (game) |
 
 ---
 
-# Original Phaser Template Documentation
+## Phaser Template Reference
 
-The sections below are from the original Phaser React TypeScript template.
+This project was bootstrapped from the [Phaser React TypeScript template](https://github.com/phaserjs/template-react-ts).
 
-## React Bridge
+### React Bridge
 
-The `PhaserGame.tsx` component is the bridge between React and Phaser. It initializes the Phaser game and passes events between the two.
+`PhaserGame.tsx` initializes the Phaser game and bridges events between React and Phaser via `EventBus`.
 
-To communicate between React and Phaser, you can use the **EventBus.js** file. This is a simple event bus that allows you to emit and listen for events from both React and Phaser.
+### Handling Assets
 
-```js
-// In React
-import { EventBus } from "./EventBus";
-
-// Emit an event
-EventBus.emit("event-name", data);
-
-// In Phaser
-// Listen for an event
-EventBus.on("event-name", (data) => {
-    // Do something with the data
-});
-```
-
-In addition to this, the `PhaserGame` component exposes the Phaser game instance along with the most recently active Phaser Scene using React forwardRef.
-
-## Phaser Scene Handling
-
-In Phaser, the Scene is the lifeblood of your game. It is where you sprites, game logic and all of the Phaser systems live. You can also have multiple scenes running at the same time.
-
-**Important**: When you add a new Scene to your game, make sure you expose to React by emitting the `"current-scene-ready"` event via the `EventBus`:
-
-```ts
-class MyScene extends Phaser.Scene {
-    constructor() {
-        super("MyScene");
-    }
-
-    create() {
-        // Your Game Objects and logic here
-
-        // At the end of create method:
-        EventBus.emit("current-scene-ready", this);
-    }
-}
-```
-
-## Handling Assets
-
-Vite supports loading assets via JavaScript module `import` statements.
-
-To embed an asset:
+Static files go in `public/assets`. Imported files are bundled by Vite:
 
 ```js
 import logoImg from "./assets/logo.png";
 ```
 
-To load static files, place them in `public/assets`:
+### Deploying to Production
 
-```js
-preload();
-{
-    this.load.image("logo", logoImg);
-    this.load.image("background", "assets/bg.png");
-}
+```bash
+npm run build
+# Upload contents of dist/ to your web server
 ```
 
-## Deploying to Production
+### About log.js
 
-Run `npm run build` to create a production bundle in the `dist` folder. Upload all contents of `dist` to your web server.
+`log.js` sends anonymous usage data to Phaser Studio. To disable, use `npm run dev-nolog` or delete `log.js`.
 
-## About log.js
+### Phaser Community
 
-The `log.js` file sends anonymous usage data to Phaser Studio. To disable:
-
-- Use `npm run dev-nolog` or `npm run build-nolog`
-- Or delete `log.js` and remove references in `package.json`
-
-## Phaser Community
-
-**Visit:** [phaser.io](https://phaser.io) | **Discord:** [discord.gg/phaser](https://discord.gg/phaser) | **Docs:** [newdocs.phaser.io](https://newdocs.phaser.io)
-
-Created by [Phaser Studio](mailto:support@phaser.io). The Phaser logo and characters are © 2011 - 2025 Phaser Studio Inc.
-
+[phaser.io](https://phaser.io) | [Discord](https://discord.gg/phaser) | [Docs](https://newdocs.phaser.io)
