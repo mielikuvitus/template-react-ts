@@ -4,6 +4,7 @@ A mobile browser game that converts photos into playable game levels using AI-po
 
 ## Project Overview
 
+```
 User uploads photo
     ↓
 CUA+SAM: Segment all objects/surfaces with coordinates
@@ -14,6 +15,8 @@ Generate Phaser.js game with:
   - Platforms at detected coordinates
   - Obstacles/collectibles from labeled objects
   - Physics based on real image layout
+
+```
 
 **Current Status: MVP Step 2.5 - Photo Capture & Upload Flow**
 
@@ -223,4 +226,5 @@ The `log.js` file sends anonymous usage data to Phaser Studio. To disable:
 **Visit:** [phaser.io](https://phaser.io) | **Discord:** [discord.gg/phaser](https://discord.gg/phaser) | **Docs:** [newdocs.phaser.io](https://newdocs.phaser.io)
 
 Created by [Phaser Studio](mailto:support@phaser.io). The Phaser logo and characters are © 2011 - 2025 Phaser Studio Inc.
+
 
