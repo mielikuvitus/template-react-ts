@@ -1,0 +1,46 @@
+.splash-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000000;
+    opacity: 1;
+    transition: opacity 0.8s ease-out;
+}
+
+.splash-screen__group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.splash-screen__logo {
+    height: 1em;
+    width: auto;
+    font-size: 36px;
+}
+
+.splash-screen--fading {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.splash-screen__title {
+    font-size: 36px;
+    color: #ffffff;
+    margin: 0;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+@media (max-width: 480px) {
+    .splash-screen__title {
+        font-size: 28px;
+    }
+
+    .splash-screen__logo {
+        font-size: 28px;
+    }
+}

@@ -1,15 +1,19 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { IRefPhaserGame, PhaserGame } from './PhaserGame';
 import { MainMenu } from './game/scenes/MainMenu';
 import { CaptureAndUploadScreen } from './ui/CaptureAndUploadScreen';
+import { SplashScreen } from './ui/SplashScreen';
 
-type AppScreen = 'capture' | 'game';
+type AppScreen = 'splash' | 'capture' | 'game';
 
 function App()
 {
-    // Current screen state - start with capture/upload screen
-    // Note: setCurrentScreen will be used in Step 3 to transition to game after successful upload
-    const [currentScreen, _setCurrentScreen] = useState<AppScreen>('capture');
+    // Current screen state - start with splash screen
+    const [currentScreen, setCurrentScreen] = useState<AppScreen>('splash');
+
+    const handleSplashComplete = useCallback(() => {
+        setCurrentScreen('capture');
+    }, []);
 
     // The sprite can only be moved in the MainMenu Scene
     const [canMoveSprite, setCanMoveSprite] = useState(true);
@@ -85,6 +89,11 @@ function App()
 
         setCanMoveSprite(scene.scene.key !== 'MainMenu');
         
+    }
+
+    // Render splash screen
+    if (currentScreen === 'splash') {
+        return <SplashScreen onComplete={handleSplashComplete} />;
     }
 
     // Render capture & upload screen
