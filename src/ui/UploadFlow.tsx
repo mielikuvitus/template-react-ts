@@ -24,6 +24,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
+import { CloudUpload, ChevronUp, ChevronDown } from "lucide-react";
 import {
     uploadImageForScene,
     SceneResponse,
@@ -32,14 +33,16 @@ import {
 import { makeRequestId, formatNow } from "../services/request_trace";
 import { parseSceneV1 } from "../shared/schema/scene_v1.schema";
 import type { SceneV1 } from "../shared/schema/scene_v1.types";
+import { Icon } from "./Icon";
 import { UploadLoading } from "./screens/UploadLoading";
 import { UploadSuccess } from "./screens/UploadSuccess";
 import { UploadError as UploadErrorScreen } from "./screens/UploadError";
 import { PreviewScreen } from "./PreviewScreen";
+import { PlayScreen } from "./PlayScreen";
 import { ValidationErrorScreen } from "./ValidationErrorScreen";
 import "./UploadFlow.css";
 
-export type UploadFlowState = "idle" | "loading" | "success" | "error" | "preview" | "validationError";
+export type UploadFlowState = "idle" | "loading" | "success" | "error" | "preview" | "play" | "validationError";
 
 // Internal alias for readability
 type FlowState = UploadFlowState;
@@ -65,6 +68,8 @@ const MOCK_SCENE_RESPONSE = {
     objects: [
         { id: 'plat_1', type: 'platform', label: 'table', confidence: 0.95, bounds_normalized: { x: 0.05, y: 0.75, w: 0.4, h: 0.06 } },
         { id: 'plat_2', type: 'platform', label: 'shelf', confidence: 0.88, bounds_normalized: { x: 0.55, y: 0.55, w: 0.35, h: 0.05 } },
+        { id: 'plat_3', type: 'platform', label: 'ledge', confidence: 0.85, bounds_normalized: { x: 0.15, y: 0.35, w: 0.30, h: 0.05 } },
+        { id: 'plat_4', type: 'platform', label: 'beam', confidence: 0.80, bounds_normalized: { x: 0.65, y: 0.22, w: 0.30, h: 0.04 } },
         { id: 'obs_1', type: 'obstacle', label: 'chair', confidence: 0.82, bounds_normalized: { x: 0.3, y: 0.6, w: 0.12, h: 0.15 } },
         { id: 'col_1', type: 'collectible', label: 'cup', confidence: 0.78, bounds_normalized: { x: 0.2, y: 0.7, w: 0.05, h: 0.05 } },
         { id: 'haz_1', type: 'hazard', label: 'spill', confidence: 0.70, bounds_normalized: { x: 0.7, y: 0.85, w: 0.15, h: 0.04 } },
@@ -238,7 +243,26 @@ export function UploadFlow({
         setState("preview");
     }, [sceneData]);
 
+    const handlePlay = useCallback(() => {
+        if (!sceneData) return;
+
+        // Validate with Zod before starting game
+        const result = parseSceneV1(sceneData);
+        if (!result.ok) {
+            setValidationErrors(result.errors);
+            setState("validationError");
+            return;
+        }
+
+        setValidatedScene(result.data);
+        setState("play");
+    }, [sceneData]);
+
     const handleBackFromPreview = useCallback(() => {
+        setState("success");
+    }, []);
+
+    const handleBackFromPlay = useCallback(() => {
         setState("success");
     }, []);
 
@@ -262,6 +286,18 @@ export function UploadFlow({
         );
     }
 
+    // Play screen (full-screen, replaces everything)
+    if (state === "play" && validatedScene && photoUrl) {
+        return (
+            <PlayScreen
+                photoUrl={photoUrl}
+                sceneData={validatedScene}
+                onBack={handleBackFromPlay}
+                onRetake={onRetake}
+            />
+        );
+    }
+
     // Validation error screen (full-screen)
     if (state === "validationError") {
         return (
@@ -281,7 +317,7 @@ export function UploadFlow({
                             className="upload-flow__upload-button"
                             onClick={handleUpload}
                         >
-                            ☁️ Upload & Generate Level
+                            <Icon icon={CloudUpload} size={20} /> Upload & Generate Level
                         </button>
                     </div>
                 )}
@@ -295,6 +331,7 @@ export function UploadFlow({
                         onUploadAgain={handleUploadAgain}
                         onRetake={onRetake}
                         onPreview={handlePreview}
+                        onPlay={handlePlay}
                         showSceneJson={showSceneJson}
                     />
                 )}
@@ -321,7 +358,7 @@ export function UploadFlow({
                                         setShowDebugResponse(!showDebugResponse)
                                     }
                                 >
-                                    {showDebugResponse ? "▲" : "▼"} Last
+                                    <Icon icon={showDebugResponse ? ChevronUp : ChevronDown} size={12} />{" "}Last
                                     Response (debug)
                                 </button>
                                 {showDebugResponse && (

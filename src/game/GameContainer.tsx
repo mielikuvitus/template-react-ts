@@ -89,13 +89,19 @@ export function GameContainer({ photoUrl, sceneData, debugEnabled }: GameContain
         const game = new Game(config);
         gameRef.current = game;
 
-        game.events.once('ready', () => {
-            game.scene.add('PreviewScene', PreviewScene, true, {
-                photoUrl,
-                sceneData,
-                debugEnabled,
-            });
-        });
+        const sceneInitData = { photoUrl, sceneData, debugEnabled };
+
+        // Handle both sync and async boot (Phaser boots synchronously
+        // when document is already loaded, so 'ready' may have already fired).
+        const addScene = () => {
+            game.scene.add('PreviewScene', PreviewScene, true, sceneInitData);
+        };
+
+        if (game.isBooted) {
+            addScene();
+        } else {
+            game.events.once('ready', addScene);
+        }
 
         return () => {
             if (gameRef.current) {

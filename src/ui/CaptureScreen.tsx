@@ -1,5 +1,7 @@
 import { useState, useCallback } from 'react';
+import { Check } from 'lucide-react';
 import { CameraCapture, CaptureData } from './CameraCapture';
+import { Icon } from './Icon';
 import './CaptureScreen.css';
 
 interface CaptureScreenProps {
@@ -41,7 +43,7 @@ export function CaptureScreen({ onNext }: CaptureScreenProps) {
                     disabled={!hasCapture}
                     onClick={handleNextClick}
                 >
-                    {hasCapture ? '✓ Next: Generate Level' : 'Take a photo to continue'}
+                    {hasCapture ? <><Icon icon={Check} size={16} /> Next: Generate Level</> : 'Take a photo to continue'}
                 </button>
             </footer>
         </div>

@@ -1,5 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
+import { Camera, RefreshCw } from 'lucide-react';
 import { downscaleImageToBlob, bytesToKb, DownscaleResult } from '../services/image_processing_service';
+import { Icon } from './Icon';
 import './CameraCapture.css';
 
 export interface CaptureData {
@@ -30,7 +32,6 @@ export function CameraCapture({
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Clean up object URLs on unmount or when preview changes
     useEffect(() => {
         return () => {
             if (previewUrl) {
@@ -41,13 +42,7 @@ export function CameraCapture({
 
     const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        
-        // Handle user canceling file selection
-        if (!file) {
-            return;
-        }
-
-        // Validate file type
+        if (!file) return;
         if (!file.type.startsWith('image/')) {
             setError('Please select an image file');
             return;
@@ -56,17 +51,14 @@ export function CameraCapture({
         setError(null);
         setIsProcessing(true);
 
-        // Revoke previous preview URL if exists
         if (previewUrl) {
             URL.revokeObjectURL(previewUrl);
         }
 
         try {
-            // Create preview URL
             const newPreviewUrl = URL.createObjectURL(file);
             setPreviewUrl(newPreviewUrl);
 
-            // Compress the image
             const result: DownscaleResult = await downscaleImageToBlob(file, maxSize, quality);
 
             const newCaptureData: CaptureData = {
@@ -77,10 +69,7 @@ export function CameraCapture({
             };
 
             setCaptureData(newCaptureData);
-            
-            if (onCapture) {
-                onCapture(newCaptureData);
-            }
+            if (onCapture) onCapture(newCaptureData);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to process image');
             setPreviewUrl(null);
@@ -91,24 +80,12 @@ export function CameraCapture({
     }, [previewUrl, maxSize, quality, onCapture]);
 
     const handleRetake = useCallback(() => {
-        // Revoke current preview URL
-        if (previewUrl) {
-            URL.revokeObjectURL(previewUrl);
-        }
-        
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
         setCaptureData(null);
         setError(null);
-        
-        // Reset the input so the same file can be selected again
-        if (inputRef.current) {
-            inputRef.current.value = '';
-        }
-
-        // Notify parent
-        if (onRetake) {
-            onRetake();
-        }
+        if (inputRef.current) inputRef.current.value = '';
+        if (onRetake) onRetake();
     }, [previewUrl, onRetake]);
 
     const triggerCapture = useCallback(() => {
@@ -117,7 +94,6 @@ export function CameraCapture({
 
     return (
         <div className="camera-capture">
-            {/* Hidden file input for camera capture */}
             <input
                 ref={inputRef}
                 type="file"
@@ -136,7 +112,7 @@ export function CameraCapture({
                     tabIndex={0}
                     onKeyDown={(e) => e.key === 'Enter' && triggerCapture()}
                 >
-                    📷 Take Photo
+                    <Icon icon={Camera} size={20} /> Take Photo
                 </label>
             )}
 
@@ -165,10 +141,9 @@ export function CameraCapture({
                         className="camera-capture__retake"
                         onClick={handleRetake}
                     >
-                        🔄 Retake Photo
+                        <Icon icon={RefreshCw} size={16} /> Retake Photo
                     </button>
 
-                    {/* Debug info - controlled by showDebugInfo prop */}
                     {showDebugInfo && (
                         <div className="camera-capture__debug">
                             <h4 className="camera-capture__debug-title">Image Info</h4>

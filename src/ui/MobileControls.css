@@ -1,0 +1,53 @@
+/* Mobile Controls - Touch-friendly platformer controls panel */
+
+.mobile-controls {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    user-select: none;
+    touch-action: none;
+}
+
+.mobile-controls__left {
+    display: flex;
+    gap: 10px;
+}
+
+.mobile-controls__right {
+    display: flex;
+}
+
+.mobile-controls__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    touch-action: none;
+    transition: background 0.1s;
+}
+
+.mobile-controls__btn:active {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.mobile-controls__btn--jump {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+/* Controls are always visible — desktop users see the same mobile layout */

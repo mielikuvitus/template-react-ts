@@ -1,20 +1,13 @@
 /**
  * PREVIEW SCREEN (Step 3)
  * ========================
- *
- * Shows the Phaser level preview after successful Scene JSON validation.
- *
- * Contains:
- * - Phaser GameContainer (renders photo + debug overlays)
- * - Debug toggle button
- * - Back button to return to success screen
- *
- * The scene data is validated with Zod BEFORE this screen is shown.
- * If validation fails, the app shows ValidationErrorScreen instead.
+ * Shows the Phaser level preview. Lucide icons replace emojis.
  */
 
 import { useState } from 'react';
+import { ArrowLeft, Bug, BugOff } from 'lucide-react';
 import { GameContainer } from '../game/GameContainer';
+import { Icon } from './Icon';
 import type { SceneV1 } from '../shared/schema/scene_v1.types';
 import './PreviewScreen.css';
 
@@ -33,14 +26,14 @@ export function PreviewScreen({ photoUrl, sceneData, onBack }: PreviewScreenProp
         <div className="preview-screen">
             <div className="preview-screen__header">
                 <button className="preview-screen__back-btn" onClick={onBack}>
-                    ← Back
+                    <Icon icon={ArrowLeft} size={16} /> Back
                 </button>
                 <h1 className="preview-screen__title">Level Preview</h1>
                 <button
                     className={`preview-screen__debug-btn ${debugEnabled ? 'preview-screen__debug-btn--active' : ''}`}
                     onClick={() => setDebugEnabled(!debugEnabled)}
                 >
-                    {debugEnabled ? '⊡ Debug' : '⊟ Debug'}
+                    <Icon icon={debugEnabled ? Bug : BugOff} size={14} /> Debug
                 </button>
             </div>
 

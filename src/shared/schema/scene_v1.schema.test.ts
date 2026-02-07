@@ -14,7 +14,8 @@ import { parseSceneV1 } from './scene_v1.schema';
 // ---------------------------------------------------------------------------
 // Helper: minimal valid scene (reused as base, then mutated for failure tests)
 // ---------------------------------------------------------------------------
-function validScene() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function validScene(): Record<string, any> {
     return {
         version: 1,
         image: { w: 1024, h: 768 },

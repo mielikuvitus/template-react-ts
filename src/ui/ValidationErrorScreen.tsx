@@ -1,17 +1,12 @@
 /**
  * VALIDATION ERROR SCREEN
  * ========================
- *
- * Shown when Scene JSON fails Zod validation.
- * This prevents Phaser from starting with invalid data.
- *
- * Shows:
- * - "Invalid Scene JSON" heading
- * - Expandable list of validation errors
- * - Back button to return to success/upload screen
+ * Shown when Scene JSON fails Zod validation. Lucide icons replace emojis.
  */
 
 import { useState } from 'react';
+import { AlertTriangle, ArrowLeft, ChevronUp, ChevronDown } from 'lucide-react';
+import { Icon } from './Icon';
 import './ValidationErrorScreen.css';
 
 interface ValidationErrorScreenProps {
@@ -25,7 +20,9 @@ export function ValidationErrorScreen({ errors, onBack }: ValidationErrorScreenP
     return (
         <div className="validation-error-screen">
             <div className="validation-error-screen__card glass-card">
-                <div className="validation-error-screen__icon">⚠</div>
+                <div className="validation-error-screen__icon">
+                    <Icon icon={AlertTriangle} size={32} />
+                </div>
                 <h2 className="validation-error-screen__title">Invalid Scene JSON</h2>
                 <p className="validation-error-screen__subtitle">
                     The backend response failed validation.
@@ -36,7 +33,8 @@ export function ValidationErrorScreen({ errors, onBack }: ValidationErrorScreenP
                     className="validation-error-screen__toggle"
                     onClick={() => setExpanded(!expanded)}
                 >
-                    {expanded ? '▲' : '▼'} {errors.length} validation error{errors.length !== 1 ? 's' : ''}
+                    <Icon icon={expanded ? ChevronUp : ChevronDown} size={14} />{' '}
+                    {errors.length} validation error{errors.length !== 1 ? 's' : ''}
                 </button>
 
                 {expanded && (
@@ -54,7 +52,7 @@ export function ValidationErrorScreen({ errors, onBack }: ValidationErrorScreenP
                         className="glass-button glass-button--primary"
                         onClick={onBack}
                     >
-                        ← Back to Results
+                        <Icon icon={ArrowLeft} size={16} /> Back to Results
                     </button>
                 </div>
             </div>

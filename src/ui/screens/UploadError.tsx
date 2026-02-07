@@ -1,21 +1,11 @@
 /**
  * UPLOAD ERROR SCREEN
  * ===================
- * 
- * Displays when the upload fails (network error, server error, etc).
- * 
- * Shows:
- * - Request ID for debugging with backend logs
- * - Error message and status code
- * - Action buttons: Try Again, Retake Photo
- * 
- * Props:
- * - requestId: string - The request ID for this failed upload
- * - error: Error - The error object with message and optional status
- * - onRetry: () => void - Retry the upload
- * - onRetake: () => void - Return to capture screen
+ * Displays when the upload fails. Lucide icons replace emojis.
  */
 
+import { XCircle, RefreshCw, Camera } from 'lucide-react';
+import { Icon } from '../Icon';
 import './UploadScreens.css';
 
 interface UploadErrorProps {
@@ -37,7 +27,9 @@ export function UploadError({
                 <div className="request-id">{requestId}</div>
 
                 <div style={{ marginTop: '16px', textAlign: 'center' }}>
-                    <div className="error-icon">✕</div>
+                    <div className="error-icon">
+                        <Icon icon={XCircle} size={32} />
+                    </div>
                     <h2 className="screen-title">Upload Failed</h2>
                     <p className="screen-subtitle">
                         {error.status ? `Status: ${error.status}` : 'Connection error'}
@@ -53,10 +45,10 @@ export function UploadError({
 
                 <div className="button-group" style={{ marginTop: '24px' }}>
                     <button className="glass-button glass-button--primary" onClick={onRetry}>
-                        ↻ Try Again
+                        <Icon icon={RefreshCw} size={16} /> Try Again
                     </button>
                     <button className="glass-button glass-button--secondary" onClick={onRetake}>
-                        📷 Retake Photo
+                        <Icon icon={Camera} size={16} /> Retake Photo
                     </button>
                 </div>
             </div>

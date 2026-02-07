@@ -1,0 +1,91 @@
+/* Play Screen - Game wrapper with controls
+ *
+ * Single flex column filling the viewport:
+ *   [Header]   — flex-shrink: 0
+ *   [Game]     — flex: 1 (fills remaining)
+ *   [Controls] — flex-shrink: 0
+ *
+ * max-width + margin:auto centers on wide screens.
+ * No nested wrappers, no container-type — keeps flex height reliable.
+ */
+
+/* position:fixed prevents body scroll on mobile.
+ * left/right:0 + max-width + margin:auto centers on desktop. */
+.play-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    background: #0f0f1a;
+    overflow: hidden;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.play-screen__header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 10;
+}
+
+.play-screen__back-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+.play-screen__score {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.play-screen__debug-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+}
+
+.play-screen__debug-btn--active {
+    color: rgba(74, 222, 128, 0.8);
+    border-color: rgba(74, 222, 128, 0.3);
+}
+
+/* Game area — takes all space between header and controls.
+ * position:relative so the canvas (absolute) fills it without
+ * affecting the flex height calculation. */
+.play-screen__game {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Absolutely positioned so Phaser cannot push controls off screen. */
+.play-screen__canvas {
+    position: absolute;
+    inset: 0;
+}

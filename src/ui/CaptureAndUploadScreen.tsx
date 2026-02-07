@@ -16,9 +16,11 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { Minus, Plus } from 'lucide-react';
 import { CameraCapture, CaptureData } from './CameraCapture';
 import { UploadFlow } from './UploadFlow';
 import type { UploadFlowState } from './UploadFlow';
+import { Icon } from './Icon';
 import './CaptureAndUploadScreen.css';
 
 type ScreenState = 'capture' | 'preview' | 'uploading';
@@ -116,7 +118,7 @@ export function CaptureAndUploadScreen() {
     // Note: screenState 'preview' = photo preview (before upload)
     //       flowState 'preview' = Phaser level preview (after success)
     const getDevStep = (): string => {
-        if (flowState === 'preview') return 'phaser_preview';
+        if (flowState === 'preview' || flowState === 'play') return 'phaser_preview';
         if (flowState === 'validationError') return 'validationError';
         if (flowState === 'success' || flowState === 'error') return flowState;
         if (screenState === 'uploading' || flowState === 'loading') return 'uploading';
@@ -195,7 +197,7 @@ export function CaptureAndUploadScreen() {
                             className="dev-panel__toggle-btn"
                             onClick={() => setDevPanelOpen(!devPanelOpen)}
                         >
-                            {devPanelOpen ? '−' : '+'}
+                            <Icon icon={devPanelOpen ? Minus : Plus} size={14} />
                         </button>
                     </div>
                     

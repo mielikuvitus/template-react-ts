@@ -1,0 +1,8 @@
+/* Icon wrapper - consistent alignment for Lucide icons */
+
+.ui-icon {
+    display: inline-flex;
+    vertical-align: middle;
+    flex-shrink: 0;
+    opacity: 0.9;
+}
