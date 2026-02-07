@@ -255,8 +255,6 @@ Object type enum
 - hazard
 - decoration
 
----
-
 ## Property enums
 
 ### Surface type (platform / obstacle / hazard)
@@ -267,8 +265,6 @@ Allowed values:
 - soft
 - slippery
 - sticky
-
----
 
 ## Gameplay mechanic enums
 
@@ -306,8 +302,6 @@ The AI may suggest values, but the game engine must clamp them.
 - damage_amount: 1 → 50
 - slow_multiplier: 0.4 → 1.0
 
----
-
 ## Type-specific rules
 
 ### Platforms
@@ -324,16 +318,12 @@ Allowed mechanics:
 - friction
 - bounciness
 
----
-
 ### Obstacles
 
 Allowed mechanics:
 
 - is_solid
 - optional damage_amount
-
----
 
 ### Collectibles
 
@@ -345,8 +335,6 @@ Allowed mechanics:
 
 - health_restore (only if pickup_type is health_pack)
 
----
-
 ### Hazards
 
 Required:
@@ -357,8 +345,6 @@ Required:
 Allowed mechanics:
 
 - slow_multiplier
-
----
 
 ### Decorations
 
@@ -378,8 +364,6 @@ Allowed mechanics:
     - decoration: 25
 
 If more objects are detected, the AI should return the most visually prominent ones.
-
----
 
 ## AI output rules (strict)
 
@@ -502,3 +486,4 @@ The `log.js` file sends anonymous usage data to Phaser Studio. To disable:
 **Visit:** [phaser.io](https://phaser.io) | **Discord:** [discord.gg/phaser](https://discord.gg/phaser) | **Docs:** [newdocs.phaser.io](https://newdocs.phaser.io)
 
 Created by [Phaser Studio](mailto:support@phaser.io). The Phaser logo and characters are © 2011 - 2025 Phaser Studio Inc.
+
