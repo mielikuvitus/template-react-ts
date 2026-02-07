@@ -2,46 +2,32 @@
  * CAPTURE AND UPLOAD SCREEN
  * =========================
  * 
- * This component orchestrates the full flow:
- * 1. Photo capture (using CameraCapture component)
- * 2. Photo upload → Scene JSON (using UploadFlow component)
+ * Orchestrates the full flow:
+ * 1. Photo capture (CameraCapture)
+ * 2. Photo upload → Scene JSON (UploadFlow)
+ * 3. Level preview (handled inside UploadFlow)
  * 
- * FLOW:
- * - Initial: Show CameraCapture with "Take Photo" button
- * - After capture: Show photo preview + retake + upload button
- * - During upload: Show loading screen
- * - On success: Show Scene JSON summary
- * - On error: Show error with retry option
- * - Retake: Reset to initial capture state
- * 
- * DEV PANEL (persisted to localStorage):
- * - Show Image Info: Toggle visibility of image debug data (size, dimensions, compression)
- * - Force Success: Always show success on real success (default ON in dev)
- * - Demo Random: 50/50 chance to show fake error after real success
- * 
- * INTEGRATION NOTES:
- * - CameraCapture handles mobile camera access and image compression
- * - UploadFlow handles the API call and result display
- * - This screen ties them together and manages the overall state
- * 
- * NEXT STEP (Step 3):
- * - When success, pass sceneData to Phaser game initialization
- * - Add "Start Game" button on success screen
+ * DEV PANEL:
+ * Context-aware - shows only relevant toggles for the current step:
+ * - Capture step: Image Info
+ * - Upload step: Image Info, Mock/Backend toggles
+ * - Success step: Show JSON (logs to console), Player/Exit coords
+ * - Preview step: (none needed here, PreviewScreen has its own debug)
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { CameraCapture, CaptureData } from './CameraCapture';
 import { UploadFlow } from './UploadFlow';
+import type { UploadFlowState } from './UploadFlow';
 import './CaptureAndUploadScreen.css';
 
 type ScreenState = 'capture' | 'preview' | 'uploading';
 
-// Check if we're in dev mode
 const isDev = import.meta.env.DEV;
 
-// LocalStorage keys
 const STORAGE_KEYS = {
     showImageInfo: 'dev_showImageInfo',
+    showSceneJson: 'dev_showSceneJson',
     demoRandom: 'dev_demoRandom',
     mockMode: 'dev_mockMode',
     mockFallback: 'dev_mockFallback',
@@ -50,50 +36,71 @@ const STORAGE_KEYS = {
 export function CaptureAndUploadScreen() {
     const [screenState, setScreenState] = useState<ScreenState>('capture');
     const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
+    const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+    const photoUrlRef = useRef<string | null>(null);
+
+    // Track the UploadFlow's internal state for dev panel context
+    const [flowState, setFlowState] = useState<UploadFlowState | null>(null);
 
     // Dev panel state
     const [devPanelOpen, setDevPanelOpen] = useState(true);
     const [showImageInfo, setShowImageInfo] = useState(() => {
         const stored = localStorage.getItem(STORAGE_KEYS.showImageInfo);
-        return stored === 'true'; // Default OFF
+        return stored === 'true';
+    });
+    const [showSceneJson, setShowSceneJson] = useState(() => {
+        const stored = localStorage.getItem(STORAGE_KEYS.showSceneJson);
+        return stored === 'true';
     });
     const [demoRandom, setDemoRandom] = useState(() => {
         const stored = localStorage.getItem(STORAGE_KEYS.demoRandom);
-        return stored === 'true'; // Default OFF
+        return stored === 'true';
     });
     const [mockMode, setMockMode] = useState(() => {
         const stored = localStorage.getItem(STORAGE_KEYS.mockMode);
-        return stored === 'true'; // Default OFF
+        return stored === 'true';
     });
     const [mockFallback, setMockFallback] = useState(() => {
         const stored = localStorage.getItem(STORAGE_KEYS.mockFallback);
-        return stored === 'true'; // Default OFF
+        return stored === 'true';
     });
 
     // Persist toggles
     useEffect(() => {
         localStorage.setItem(STORAGE_KEYS.showImageInfo, String(showImageInfo));
     }, [showImageInfo]);
-
+    useEffect(() => {
+        localStorage.setItem(STORAGE_KEYS.showSceneJson, String(showSceneJson));
+    }, [showSceneJson]);
     useEffect(() => {
         localStorage.setItem(STORAGE_KEYS.demoRandom, String(demoRandom));
     }, [demoRandom]);
-
     useEffect(() => {
         localStorage.setItem(STORAGE_KEYS.mockMode, String(mockMode));
     }, [mockMode]);
-
     useEffect(() => {
         localStorage.setItem(STORAGE_KEYS.mockFallback, String(mockFallback));
     }, [mockFallback]);
 
     const handleCapture = useCallback((data: CaptureData) => {
         setCapturedBlob(data.compressedBlob);
+        const url = URL.createObjectURL(data.compressedBlob);
+        if (photoUrlRef.current) {
+            URL.revokeObjectURL(photoUrlRef.current);
+        }
+        photoUrlRef.current = url;
+        setPhotoUrl(url);
         setScreenState('preview');
     }, []);
 
     const handleRetake = useCallback(() => {
         setCapturedBlob(null);
+        if (photoUrlRef.current) {
+            URL.revokeObjectURL(photoUrlRef.current);
+            photoUrlRef.current = null;
+        }
+        setPhotoUrl(null);
+        setFlowState(null);
         setScreenState('capture');
     }, []);
 
@@ -101,18 +108,36 @@ export function CaptureAndUploadScreen() {
         setScreenState('uploading');
     }, []);
 
+    const handleFlowStateChange = useCallback((state: UploadFlowState) => {
+        setFlowState(state);
+    }, []);
+
+    // Determine which step we're in for the dev panel
+    // Note: screenState 'preview' = photo preview (before upload)
+    //       flowState 'preview' = Phaser level preview (after success)
+    const getDevStep = (): string => {
+        if (flowState === 'preview') return 'phaser_preview';
+        if (flowState === 'validationError') return 'validationError';
+        if (flowState === 'success' || flowState === 'error') return flowState;
+        if (screenState === 'uploading' || flowState === 'loading') return 'uploading';
+        if (screenState === 'preview') return 'photo_preview';
+        return 'capture';
+    };
+    const currentStep = getDevStep();
+
     const getSubtitle = () => {
-        switch (screenState) {
-            case 'capture':
-                return 'Take a photo to create your level';
-            case 'preview':
-                return 'Review your photo or upload';
-            case 'uploading':
-                return 'Generating your scene...';
-            default:
-                return '';
+        switch (currentStep) {
+            case 'capture': return 'Take a photo to create your level';
+            case 'photo_preview': return 'Review your photo or upload';
+            case 'uploading': return 'Generating your scene...';
+            case 'success': return 'Scene ready';
+            case 'phaser_preview': return 'Level preview';
+            default: return '';
         }
     };
+
+    // Hide dev panel during Phaser preview (PreviewScreen has its own debug toggle)
+    const showDevPanel = isDev && currentStep !== 'phaser_preview' && currentStep !== 'validationError';
 
     return (
         <div className="capture-upload-screen">
@@ -122,7 +147,6 @@ export function CaptureAndUploadScreen() {
             </div>
 
             <div className="capture-upload-screen__content">
-                {/* Show CameraCapture for capture and preview states */}
                 {(screenState === 'capture' || screenState === 'preview') && (
                     <CameraCapture 
                         onCapture={handleCapture}
@@ -131,35 +155,39 @@ export function CaptureAndUploadScreen() {
                     />
                 )}
 
-                {/* Show upload button when we have a photo */}
                 {screenState === 'preview' && capturedBlob && (
                     <div className="capture-upload-screen__upload-section">
                         <UploadFlow 
                             blob={capturedBlob}
+                            photoUrl={photoUrl}
                             onRetake={handleRetake}
                             onUploadStart={handleUploadStart}
+                            onFlowStateChange={handleFlowStateChange}
                             demoRandom={demoRandom}
                             mockMode={mockMode}
                             mockFallback={mockFallback}
+                            showSceneJson={showSceneJson}
                         />
                     </div>
                 )}
 
-                {/* Show upload flow for uploading state */}
                 {screenState === 'uploading' && (
                     <UploadFlow 
                         blob={capturedBlob}
+                        photoUrl={photoUrl}
                         onRetake={handleRetake}
+                        onFlowStateChange={handleFlowStateChange}
                         autoStart={true}
                         demoRandom={demoRandom}
                         mockMode={mockMode}
                         mockFallback={mockFallback}
+                        showSceneJson={showSceneJson}
                     />
                 )}
             </div>
 
-            {/* Dev Panel - only in dev mode */}
-            {isDev && (
+            {/* Dev Panel - context-aware, hidden during Phaser preview */}
+            {showDevPanel && (
                 <div className={`dev-panel ${!devPanelOpen ? 'dev-panel--minimized' : ''}`}>
                     <div className="dev-panel__header">
                         <span className="dev-panel__title">Dev</span>
@@ -173,59 +201,82 @@ export function CaptureAndUploadScreen() {
                     
                     {devPanelOpen && (
                         <div className="dev-panel__content">
-                            <div className="dev-panel__item">
-                                <span className="dev-panel__label">Image Info</span>
-                                <label className="toggle-switch">
-                                    <input
-                                        type="checkbox"
-                                        checked={showImageInfo}
-                                        onChange={(e) => setShowImageInfo(e.target.checked)}
-                                    />
-                                    <span className="toggle-switch__slider"></span>
-                                </label>
-                            </div>
-                            <div className="dev-panel__section">
-                                <div className="dev-panel__section-title">Backend</div>
+                            {/* Image Info toggle - only after photo is taken */}
+                            {currentStep === 'photo_preview' && (
                                 <div className="dev-panel__item">
-                                    <span className="dev-panel__label">Demo Random</span>
+                                    <span className="dev-panel__label">Image Info</span>
                                     <label className="toggle-switch">
                                         <input
                                             type="checkbox"
-                                            checked={demoRandom}
-                                            onChange={(e) => setDemoRandom(e.target.checked)}
+                                            checked={showImageInfo}
+                                            onChange={(e) => setShowImageInfo(e.target.checked)}
                                         />
                                         <span className="toggle-switch__slider"></span>
                                     </label>
                                 </div>
-                                <div className="dev-panel__item">
-                                    <span className="dev-panel__label">Mock Fallback</span>
-                                    <label className="toggle-switch">
-                                        <input
-                                            type="checkbox"
-                                            checked={mockFallback}
-                                            onChange={(e) => setMockFallback(e.target.checked)}
-                                        />
-                                        <span className="toggle-switch__slider"></span>
-                                    </label>
-                                </div>
-                            </div>
+                            )}
 
-                            <div className="dev-panel__divider"></div>
+                            {/* Upload toggles - only during capture/photo preview/uploading/error */}
+                            {(currentStep === 'capture' || currentStep === 'photo_preview' || currentStep === 'uploading' || currentStep === 'error') && (
+                                <>
+                                    {currentStep === 'photo_preview' && <div className="dev-panel__divider"></div>}
+                                    <div className="dev-panel__section">
+                                        <div className="dev-panel__section-title">Backend</div>
+                                        <div className="dev-panel__item">
+                                            <span className="dev-panel__label">Demo Random</span>
+                                            <label className="toggle-switch">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={demoRandom}
+                                                    onChange={(e) => setDemoRandom(e.target.checked)}
+                                                />
+                                                <span className="toggle-switch__slider"></span>
+                                            </label>
+                                        </div>
+                                        <div className="dev-panel__item">
+                                            <span className="dev-panel__label">Mock Fallback</span>
+                                            <label className="toggle-switch">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={mockFallback}
+                                                    onChange={(e) => setMockFallback(e.target.checked)}
+                                                />
+                                                <span className="toggle-switch__slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div className="dev-panel__divider"></div>
+                                    <div className="dev-panel__section">
+                                        <div className="dev-panel__section-title">No Backend</div>
+                                        <div className="dev-panel__item">
+                                            <span className="dev-panel__label">Mock Mode</span>
+                                            <label className="toggle-switch">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={mockMode}
+                                                    onChange={(e) => setMockMode(e.target.checked)}
+                                                />
+                                                <span className="toggle-switch__slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
 
-                            <div className="dev-panel__section">
-                                <div className="dev-panel__section-title">No Backend</div>
+                            {/* Scene JSON toggle - only on success step */}
+                            {currentStep === 'success' && (
                                 <div className="dev-panel__item">
-                                    <span className="dev-panel__label">Mock Mode</span>
+                                    <span className="dev-panel__label">Scene JSON</span>
                                     <label className="toggle-switch">
                                         <input
                                             type="checkbox"
-                                            checked={mockMode}
-                                            onChange={(e) => setMockMode(e.target.checked)}
+                                            checked={showSceneJson}
+                                            onChange={(e) => setShowSceneJson(e.target.checked)}
                                         />
                                         <span className="toggle-switch__slider"></span>
                                     </label>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     )}
                 </div>

@@ -41,21 +41,31 @@ sceneRouter.post('/', upload.single('image'), (req: Request, res: Response) => {
     // Log received image info with request ID for tracing
     console.log(`[${timestamp}] request=${requestId} received image size=${file.size} type=${file.mimetype}`);
 
-    // Return hardcoded Scene JSON matching SceneV1 schema
+    // Return hardcoded Scene JSON matching SceneV1 Zod schema
     const sceneResponse = {
         version: 1,
         image: {
             w: 1024,
             h: 768,
         },
+        objects: [
+            { id: 'plat_1', type: 'platform', label: 'table', confidence: 0.95, bounds_normalized: { x: 0.05, y: 0.75, w: 0.4, h: 0.06 } },
+            { id: 'plat_2', type: 'platform', label: 'shelf', confidence: 0.88, bounds_normalized: { x: 0.55, y: 0.55, w: 0.35, h: 0.05 } },
+            { id: 'obs_1', type: 'obstacle', label: 'chair', confidence: 0.82, bounds_normalized: { x: 0.3, y: 0.6, w: 0.12, h: 0.15 } },
+            { id: 'col_1', type: 'collectible', label: 'cup', confidence: 0.78, bounds_normalized: { x: 0.2, y: 0.7, w: 0.05, h: 0.05 } },
+            { id: 'haz_1', type: 'hazard', label: 'spill', confidence: 0.70, bounds_normalized: { x: 0.7, y: 0.85, w: 0.15, h: 0.04 } },
+        ],
         detections: [],
         spawns: {
             player: { x: 0.1, y: 0.85 },
             exit: { x: 0.9, y: 0.2 },
-            enemies: [],
-            pickups: [],
+            enemies: [
+                { x: 0.5, y: 0.5, type: 'walker' },
+            ],
+            pickups: [
+                { x: 0.3, y: 0.6, type: 'coin' },
+            ],
         },
-        surfaces: [],
         rules: [],
     };
 
