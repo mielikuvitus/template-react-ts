@@ -48,7 +48,7 @@ const EnemySchema = z.object({
     type: z.enum(ALLOWED_ENEMY_TYPES).catch('crawler'),
     x: norm,
     y: norm,
-    param: z.record(z.number()).optional().default({}),
+    param: z.record(z.string(), z.number()).optional().default({}),
 });
 
 const PickupSchema = z.object({
