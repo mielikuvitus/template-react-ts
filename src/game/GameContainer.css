@@ -1,0 +1,36 @@
+/* Game Container - Phaser Canvas Wrapper */
+
+.game-container-wrapper {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-sizing: border-box;
+}
+
+.game-container-canvas {
+    width: 100%;
+    position: relative;
+}
+
+/*
+ * Let Phaser Scale.FIT handle the canvas sizing.
+ * max-height prevents oversized portrait photos from overflowing the screen.
+ * object-fit: contain ensures the browser doesn't distort the canvas.
+ */
+.game-container-canvas canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 75vh;
+    margin: 0 auto;
+    object-fit: contain;
+}
+
+.game-container-loading {
+    padding: 32px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+}

@@ -1,0 +1,162 @@
+/* Preview Screen - Phaser Level Preview */
+
+.preview-screen {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(
+        135deg,
+        #0f0f1a 0%,
+        #1a1a2e 50%,
+        #16213e 100%
+    );
+}
+
+.preview-screen *,
+.preview-screen *::before,
+.preview-screen *::after {
+    box-sizing: border-box;
+}
+
+/* Header */
+.preview-screen__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    gap: 12px;
+}
+
+.preview-screen__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    flex: 1;
+    text-align: center;
+}
+
+.preview-screen__back-btn {
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.preview-screen__back-btn:active {
+    transform: scale(0.97);
+}
+
+.preview-screen__debug-btn {
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.preview-screen__debug-btn--active {
+    color: rgba(74, 222, 128, 0.9);
+    background: rgba(74, 222, 128, 0.1);
+    border-color: rgba(74, 222, 128, 0.25);
+}
+
+.preview-screen__debug-btn:active {
+    transform: scale(0.97);
+}
+
+/* Canvas Area */
+.preview-screen__canvas {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    min-height: 0;
+}
+
+/* Info Bar */
+.preview-screen__info {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    padding: 12px 16px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+.preview-screen__stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    min-width: 70px;
+}
+
+.preview-screen__stat-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.preview-screen__stat-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+/* Mobile adjustments */
+@media (max-width: 480px) {
+    .preview-screen__header {
+        padding: 8px 12px;
+    }
+
+    .preview-screen__title {
+        font-size: 14px;
+    }
+
+    .preview-screen__back-btn,
+    .preview-screen__debug-btn {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .preview-screen__info {
+        gap: 10px;
+        padding: 10px 12px;
+    }
+
+    .preview-screen__stat {
+        padding: 6px 12px;
+        min-width: 60px;
+    }
+
+    .preview-screen__stat-value {
+        font-size: 16px;
+    }
+}

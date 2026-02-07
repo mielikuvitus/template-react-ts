@@ -46,6 +46,11 @@ export interface UploadParams {
     requestId?: string;
 }
 
+/**
+ * Raw response from backend. This is a loose type for transport only.
+ * Actual validation happens via Zod (parseSceneV1) before data reaches Phaser.
+ * The backend may return additional fields (e.g. "objects") which Zod validates.
+ */
 export interface SceneResponse {
     version: number;
     image: { w: number; h: number };
