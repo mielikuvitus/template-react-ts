@@ -81,7 +81,7 @@ Open on mobile: Check terminal for `Network:` URL (e.g., `http://192.168.1.x:808
 | `docs/backend_contract.md` | **API specification for backend team** |
 | `docs/testing_upload.md` | Testing guide with curl examples |
 
-## For Backend Developers
+## For Backend Developer
 
 **Start here:** `docs/backend_contract.md`
 
@@ -119,6 +119,81 @@ curl -i -X POST "http://localhost:3001/api/scene" \
   -H "x-request-id: req_TEST" \
   -F "image=@photo.jpg"
 ```
+
+###AI Structured Response Example in JSON
+
+```json
+{
+  "objects": [
+    {
+      "id": "pillow_01",
+      "type": "platform",
+      "label": "pillow",
+      "bounds": {"x": 120, "y": 340, "width": 200, "height": 80},
+      "properties": {
+        "surface_type": "soft",
+        "friction": 0.3,
+        "bounciness": 0.6,
+        "movement_modifier": 0.5
+      },
+      "game_mechanics": {
+        "player_speed_multiplier": 0.6,
+        "jump_height_modifier": 1.2
+      }
+    },
+    {
+      "id": "apple_01", 
+      "type": "collectible",
+      "label": "apple",
+      "bounds": {"x": 450, "y": 280, "width": 50, "height": 50},
+      "properties": {
+        "category": "food",
+        "edible": true
+      },
+      "game_mechanics": {
+        "spawn_pickup": "health_pack",
+        "health_restore": 20
+      }
+    },
+    {
+      "id": "table_01",
+      "type": "platform", 
+      "label": "table",
+      "bounds": {"x": 300, "y": 400, "width": 600, "height": 30},
+      "properties": {
+        "surface_type": "hard",
+        "material": "wood"
+      },
+      "game_mechanics": {
+        "player_speed_multiplier": 1.0,
+        "is_solid": true
+      }
+    }
+  ]
+}
+```
+
+**To achieve this, you need to:**
+
+1. **Use CUA+SAM** for coordinates and segmentation
+2. **Craft a specialized GPT-4 Vision prompt** that returns this exact JSON structure
+
+**Example Prompt:**
+
+Analyze this image and identify all objects. For each object, return JSON with:
+- Coordinates (if CUA+SAM provides them, use those)
+- Object type: platform/obstacle/collectible/decoration
+- Physical properties: surface_type (soft/hard/slippery/sticky), material, bounciness
+- Game mechanics: How should the player interact? Speed modifiers, jump height changes, spawnable items
+
+Rules:
+- Soft surfaces (pillows, cushions, beds): reduce speed, increase jump
+- Food items: spawn health packs
+- Hard surfaces (tables, floors): normal physics
+- Sharp objects: damage zones
+- Liquids: slow movement zones
+
+Return ONLY valid JSON, no explanation.
 
 ## Dev Panel (Development Mode)
 
@@ -226,5 +301,6 @@ The `log.js` file sends anonymous usage data to Phaser Studio. To disable:
 **Visit:** [phaser.io](https://phaser.io) | **Discord:** [discord.gg/phaser](https://discord.gg/phaser) | **Docs:** [newdocs.phaser.io](https://newdocs.phaser.io)
 
 Created by [Phaser Studio](mailto:support@phaser.io). The Phaser logo and characters are © 2011 - 2025 Phaser Studio Inc.
+
 
 
