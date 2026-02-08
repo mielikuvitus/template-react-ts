@@ -281,6 +281,7 @@ export function UploadFlow({
             <PreviewScreen
                 photoUrl={photoUrl}
                 sceneData={validatedScene}
+                rawSceneData={sceneData}
                 onBack={handleBackFromPreview}
             />
         );

@@ -130,6 +130,67 @@
     font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
+/* JSON Overlay */
+.preview-screen__json-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    flex-direction: column;
+    padding: 56px 12px 12px;
+    overflow: hidden;
+}
+
+.preview-screen__json-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: rgba(15, 15, 26, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.preview-screen__json-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px 0 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.preview-screen__json-header .json-tabs {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.preview-screen__json-close {
+    padding: 8px;
+    color: rgba(255, 255, 255, 0.6);
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+}
+
+.preview-screen__json-close:hover {
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.preview-screen__json-panel .json-viewer {
+    flex: 1;
+    margin: 0;
+    border-radius: 0 0 10px 10px;
+    max-height: none;
+    overflow-y: auto;
+}
+
 /* Mobile adjustments */
 @media (max-width: 480px) {
     .preview-screen__header {
