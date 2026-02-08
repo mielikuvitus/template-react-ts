@@ -139,7 +139,15 @@ sceneRouter.post('/', upload.single('image'), async (req: Request, res: Response
         const scene = buildLevel(detections);
 
         console.log(`[${timestamp}] request=${requestId} level built: ${scene.objects.length} objects, ${scene.spawns.pickups.length} pickups, ${scene.spawns.enemies.length} enemies`);
-        res.json(scene);
+
+        // Return scene + raw AI detections for developer mode
+        res.json({
+            ...scene,
+            _debug: {
+                raw_ai_response: cleaned,
+                detections,
+            },
+        });
 
     } catch (err: unknown) {
         const apiErr = err as { status?: number; message?: string };

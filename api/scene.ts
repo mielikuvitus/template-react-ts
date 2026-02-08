@@ -188,7 +188,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const scene = buildLevel(detections);
 
         console.log(`[${timestamp}] request=${requestId} level built: ${scene.objects.length} objects, ${scene.spawns.pickups.length} pickups, ${scene.spawns.enemies.length} enemies`);
-        return res.status(200).json(scene);
+
+        // Return scene + raw AI detections for developer mode
+        return res.status(200).json({
+            ...scene,
+            _debug: {
+                raw_ai_response: cleaned,
+                detections,
+            },
+        });
 
     } catch (err: unknown) {
         const apiErr = err as { status?: number; message?: string };

@@ -60,6 +60,11 @@ export interface SceneResponse {
         pickups: unknown[];
     };
     rules: unknown[];
+    /** Raw AI detection data — only present in non-mock responses */
+    _debug?: {
+        raw_ai_response: string;
+        detections: unknown;
+    };
 }
 
 export class UploadError extends Error {

@@ -4,6 +4,7 @@
  * Shows when the backend returns Scene JSON. Lucide icons replace emojis.
  */
 
+import { useState } from 'react';
 import { Play, RefreshCw, Camera } from 'lucide-react';
 import { SceneResponse } from '../../services/ai_proxy_service';
 import { Icon } from '../Icon';
@@ -19,6 +20,8 @@ interface UploadSuccessProps {
     showSceneJson?: boolean;
 }
 
+type JsonTab = 'scene' | 'llm';
+
 export function UploadSuccess({ 
     requestId, 
     sceneData, 
@@ -28,11 +31,32 @@ export function UploadSuccess({
     onPlay,
     showSceneJson = false,
 }: UploadSuccessProps) {
+    const [activeTab, setActiveTab] = useState<JsonTab>('llm');
     const { spawns } = sceneData;
     const raw = sceneData as unknown as Record<string, unknown>;
     const objectCount = Array.isArray(raw.objects)
         ? raw.objects.length
         : 0;
+
+    // Extract debug data
+    const debugData = sceneData._debug;
+    let llmJson: string | null = null;
+    if (debugData) {
+        try {
+            // raw_ai_response is the raw string from GPT; parse it for pretty-print
+            const parsed = typeof debugData.raw_ai_response === 'string'
+                ? JSON.parse(debugData.raw_ai_response)
+                : debugData.raw_ai_response;
+            llmJson = JSON.stringify(parsed, null, 2);
+        } catch {
+            llmJson = debugData.raw_ai_response;
+        }
+    }
+
+    // Build scene JSON without the _debug field for cleaner display
+    const sceneOnly = { ...sceneData };
+    delete (sceneOnly as any)._debug;
+    const sceneJson = JSON.stringify(sceneOnly, null, 2);
 
     return (
         <div className="upload-screen">
@@ -63,8 +87,28 @@ export function UploadSuccess({
                 </div>
 
                 {showSceneJson && (
-                    <div className="json-viewer" style={{ marginTop: '16px' }}>
-                        {JSON.stringify(sceneData, null, 2)}
+                    <div style={{ marginTop: '16px' }}>
+                        <div className="json-tabs">
+                            {llmJson && (
+                                <button
+                                    className={`json-tab ${activeTab === 'llm' ? 'json-tab--active' : ''}`}
+                                    onClick={() => setActiveTab('llm')}
+                                >
+                                    LLM Response
+                                </button>
+                            )}
+                            <button
+                                className={`json-tab ${activeTab === 'scene' ? 'json-tab--active' : ''}`}
+                                onClick={() => setActiveTab('scene')}
+                            >
+                                Scene JSON
+                            </button>
+                        </div>
+                        <div className="json-viewer">
+                            {activeTab === 'llm' && llmJson
+                                ? llmJson
+                                : sceneJson}
+                        </div>
                     </div>
                 )}
 
