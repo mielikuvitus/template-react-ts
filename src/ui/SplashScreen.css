@@ -10,10 +10,26 @@
     transition: opacity 0.8s ease-out;
 }
 
+.splash-screen__center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
 .splash-screen__group {
     display: flex;
     align-items: center;
     gap: 12px;
+}
+
+.splash-screen__byline {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.35);
+    letter-spacing: 0.05em;
+    align-self: flex-start;
 }
 
 .splash-screen__logo {

@@ -28,9 +28,12 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
 
     return (
         <div className={`splash-screen ${fading ? 'splash-screen--fading' : ''}`}>
-            <div className="splash-screen__group">
-                <h1 className="splash-screen__title logo">Reality Jump</h1>
-                <SplashLogo className="splash-screen__logo" />
+            <div className="splash-screen__center">
+                <div className="splash-screen__group">
+                    <h1 className="splash-screen__title logo">Reality Jump</h1>
+                    <SplashLogo className="splash-screen__logo" />
+                </div>
+                <p className="splash-screen__byline">by Pixel Rift</p>
             </div>
         </div>
     );
