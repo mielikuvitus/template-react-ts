@@ -74,27 +74,35 @@ interface SceneV1 {
 }
 
 // ---------------------------------------------------------------------------
-// Constants — tuned to match Phaser physics
+// Constants — tuned to match Phaser physics (PhysicsConfig.ts)
 // ---------------------------------------------------------------------------
 
-/** Max vertical distance (normalized) a player can jump.
- *  PhysicsConfig uses defaultJumpHeightFraction=0.35, so 0.25 is safe. */
-const MAX_JUMP_HEIGHT = 0.25;
+/** Ground platform Y position (near bottom of screen). */
+const GROUND_Y = 0.92;
 
-/** Max horizontal gap the player can cover with a running jump. */
-const MAX_HORIZONTAL_REACH = 0.40;
+/** Target exit height (near top of screen). */
+const EXIT_Y = 0.18;
 
-/** Minimum platform width to keep. Narrower ones are dropped. */
-const MIN_PLATFORM_WIDTH = 0.08;
+/** Max vertical gap the player can jump (safe within 0.35 default jump fraction). */
+const MAX_JUMP_HEIGHT = 0.22;
 
 /** Thin platform height for the walking surface. */
 const PLATFORM_THICKNESS = 0.03;
 
-/** Max number of platforms (including ground). */
-const MAX_PLATFORMS = 10;
-
 /** How far above a platform surface to place entities. */
 const ENTITY_OFFSET_Y = 0.06;
+
+/** Min / max platforms to generate (excluding ground). */
+const MIN_PLATFORMS = 5;
+const MAX_PLATFORMS = 8;
+
+/** Min / max platform widths (normalized). */
+const MIN_PLAT_W = 0.12;
+const MAX_PLAT_W = 0.35;
+
+/** Left-side and right-side X bands for the zigzag pattern. */
+const LEFT_BAND  = { min: 0.02, max: 0.38 };
+const RIGHT_BAND = { min: 0.52, max: 0.86 };
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -102,19 +110,6 @@ const ENTITY_OFFSET_Y = 0.06;
 
 function clamp(v: number, lo: number, hi: number): number {
     return Math.max(lo, Math.min(hi, v));
-}
-
-/** Check horizontal overlap between two intervals [a.x, a.x+a.w] and [b.x, b.x+b.w]. */
-function horizontalOverlap(a: Bounds, b: Bounds): boolean {
-    return a.x < b.x + b.w && a.x + a.w > b.x;
-}
-
-/** Horizontal distance between nearest edges of two platforms. */
-function horizontalGap(a: Bounds, b: Bounds): number {
-    const aRight = a.x + a.w;
-    const bRight = b.x + b.w;
-    if (a.x < bRight && aRight > b.x) return 0; // overlap
-    return Math.min(Math.abs(a.x - bRight), Math.abs(b.x - aRight));
 }
 
 // ---------------------------------------------------------------------------
@@ -128,248 +123,185 @@ export function buildLevel(input: DetectionResponse): SceneV1 {
     const nextId = (prefix: string) => `${prefix}_${idCounter++}`;
 
     // -----------------------------------------------------------------------
-    // Step A: Convert detections to candidate platforms & other objects
+    // Step A: Classify detections — we use labels/categories/widths ONLY.
+    //         AI positions are DISCARDED because photos cluster in the
+    //         centre, producing unplayable layouts.
     // -----------------------------------------------------------------------
 
-    interface PlatformCandidate {
+    interface DetectionInfo {
         label: string;
         category: Detection['category'];
         confidence: number;
-        bounds: Bounds;
-        isBridge: boolean;
-        isGround: boolean;
+        width: number; // normalized width from AI (used for platform sizing)
         enemyAnchor: boolean;
     }
 
-    const candidates: PlatformCandidate[] = [];
+    const platformInfos: DetectionInfo[] = [];
     const collectibleDetections: Detection[] = [];
-    const obstacleDetections: Detection[] = [];
 
     for (const det of detections) {
         if (det.category === 'food') {
-            // Food items become collectibles, not platforms
             collectibleDetections.push(det);
             continue;
         }
 
-        // Use the TOP EDGE of the detection as a platform surface
-        const platBounds: Bounds = {
-            x: clamp(det.bounds_normalized.x, 0, 0.95),
-            y: clamp(det.bounds_normalized.y, 0.05, 0.90),
-            w: clamp(det.bounds_normalized.w, 0.05, 0.9),
-            h: PLATFORM_THICKNESS,
-        };
-
-        if (platBounds.w < MIN_PLATFORM_WIDTH) {
-            // Too narrow — treat as obstacle instead
-            obstacleDetections.push(det);
-            continue;
-        }
-
-        candidates.push({
+        // Everything else is a potential platform source
+        platformInfos.push({
             label: det.label,
             category: det.category,
             confidence: det.confidence,
-            bounds: platBounds,
-            isBridge: false,
-            isGround: false,
+            width: clamp(det.bounds_normalized.w, MIN_PLAT_W, MAX_PLAT_W),
             enemyAnchor: det.category === 'plant' || det.category === 'electric',
         });
     }
 
     // -----------------------------------------------------------------------
-    // Step B: Add ground platform
+    // Step B: Decide platform count
     // -----------------------------------------------------------------------
 
-    candidates.push({
-        label: 'ground',
-        category: 'furniture',
-        confidence: 1.0,
-        bounds: { x: 0.0, y: 0.92, w: 1.0, h: PLATFORM_THICKNESS },
-        isBridge: false,
+    const platCount = clamp(platformInfos.length, MIN_PLATFORMS, MAX_PLATFORMS);
+
+    // Pad with generic platforms if we have fewer detections than MIN_PLATFORMS
+    while (platformInfos.length < platCount) {
+        platformInfos.push({
+            label: 'ledge',
+            category: 'other',
+            confidence: 1.0,
+            width: 0.18,
+            enemyAnchor: false,
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // Step C: Build zigzag staircase layout
+    //
+    //     The vertical space from GROUND_Y to EXIT_Y is divided into
+    //     (platCount + 1) equal steps. Each platform alternates between
+    //     the left and right bands. This guarantees:
+    //       - Every vertical gap ≤ MAX_JUMP_HEIGHT
+    //       - Every horizontal gap ≤ the band spacing (~0.14–0.50)
+    //       - A clear upward path from ground to exit
+    // -----------------------------------------------------------------------
+
+    const totalRise = GROUND_Y - EXIT_Y; // positive, ~0.74
+    let vertStep = totalRise / (platCount + 1);
+
+    // Safety: if the step is too large for a jump, cap it
+    if (vertStep > MAX_JUMP_HEIGHT) {
+        vertStep = MAX_JUMP_HEIGHT;
+    }
+
+    interface StaircasePlatform {
+        info: DetectionInfo;
+        bounds: Bounds;
+        isGround: boolean;
+    }
+
+    const staircasePlatforms: StaircasePlatform[] = [];
+
+    for (let i = 0; i < platCount; i++) {
+        const info = platformInfos[i];
+        const y = GROUND_Y - (i + 1) * vertStep;
+
+        // Zigzag: even indices → left band, odd → right band
+        const band = i % 2 === 0 ? LEFT_BAND : RIGHT_BAND;
+        // Centre the platform within the band
+        const bandMid = (band.min + band.max) / 2;
+        const x = clamp(bandMid - info.width / 2, band.min, band.max - info.width);
+
+        staircasePlatforms.push({
+            info,
+            bounds: {
+                x: clamp(x, 0.0, 1.0 - info.width),
+                y: clamp(y, 0.05, 0.88),
+                w: info.width,
+                h: PLATFORM_THICKNESS,
+            },
+            isGround: false,
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // Step D: Add ground platform (full width, near bottom)
+    // -----------------------------------------------------------------------
+
+    const groundBounds: Bounds = { x: 0.0, y: GROUND_Y, w: 1.0, h: PLATFORM_THICKNESS };
+    staircasePlatforms.push({
+        info: { label: 'ground', category: 'furniture', confidence: 1.0, width: 1.0, enemyAnchor: false },
+        bounds: groundBounds,
         isGround: true,
-        enemyAnchor: false,
     });
 
     // -----------------------------------------------------------------------
-    // Step C: Sort by Y descending (bottom first, ground at start)
+    // Step E: Emit platform SceneObjects
     // -----------------------------------------------------------------------
 
-    candidates.sort((a, b) => b.bounds.y - a.bounds.y);
-
-    // -----------------------------------------------------------------------
-    // Step D: De-duplicate overlapping platforms at similar heights
-    // -----------------------------------------------------------------------
-
-    const filtered: PlatformCandidate[] = [];
-    for (const cand of candidates) {
-        const tooClose = filtered.some(
-            (existing) =>
-                Math.abs(existing.bounds.y - cand.bounds.y) < 0.05 &&
-                horizontalOverlap(existing.bounds, cand.bounds)
-        );
-        if (tooClose) continue;
-        filtered.push(cand);
-    }
-
-    // Limit to MAX_PLATFORMS
-    const platforms = filtered.slice(0, MAX_PLATFORMS);
-
-    // -----------------------------------------------------------------------
-    // Step E: Ensure reachability — insert bridge platforms where needed
-    // -----------------------------------------------------------------------
-
-    // Sort bottom-to-top for gap analysis (descending Y = bottom first)
-    platforms.sort((a, b) => b.bounds.y - a.bounds.y);
-
-    let bridgesInserted = true;
-    let iterations = 0;
-    while (bridgesInserted && iterations < 10) {
-        bridgesInserted = false;
-        iterations++;
-
-        for (let i = 0; i < platforms.length - 1; i++) {
-            const lower = platforms[i];
-            const upper = platforms[i + 1];
-            const vertGap = lower.bounds.y - upper.bounds.y;
-
-            if (vertGap > MAX_JUMP_HEIGHT) {
-                // Insert a bridge platform between them
-                const midY = (lower.bounds.y + upper.bounds.y) / 2;
-
-                // Horizontally, place it between the two platforms
-                const lowerCenterX = lower.bounds.x + lower.bounds.w / 2;
-                const upperCenterX = upper.bounds.x + upper.bounds.w / 2;
-                const bridgeX = clamp((lowerCenterX + upperCenterX) / 2 - 0.075, 0.02, 0.85);
-
-                const bridge: PlatformCandidate = {
-                    label: 'bridge',
-                    category: 'other',
-                    confidence: 1.0,
-                    bounds: { x: bridgeX, y: midY, w: 0.15, h: PLATFORM_THICKNESS },
-                    isBridge: true,
-                    isGround: false,
-                    enemyAnchor: false,
-                };
-
-                platforms.splice(i + 1, 0, bridge);
-                bridgesInserted = true;
-                break; // Re-sort and re-check from the start
-            }
-
-            // Also check horizontal reachability
-            const hGap = horizontalGap(lower.bounds, upper.bounds);
-            if (hGap > MAX_HORIZONTAL_REACH) {
-                // Insert a stepping-stone platform
-                const midY = (lower.bounds.y + upper.bounds.y) / 2;
-                const midX = clamp(
-                    (lower.bounds.x + lower.bounds.w / 2 + upper.bounds.x + upper.bounds.w / 2) / 2 - 0.075,
-                    0.02, 0.85
-                );
-
-                const bridge: PlatformCandidate = {
-                    label: 'stepping stone',
-                    category: 'other',
-                    confidence: 1.0,
-                    bounds: { x: midX, y: midY, w: 0.15, h: PLATFORM_THICKNESS },
-                    isBridge: true,
-                    isGround: false,
-                    enemyAnchor: false,
-                };
-
-                platforms.splice(i + 1, 0, bridge);
-                bridgesInserted = true;
-                break;
-            }
-        }
-
-        // Re-sort after insertion
-        platforms.sort((a, b) => b.bounds.y - a.bounds.y);
-    }
-
-    // Cap platforms at 12 (schema limit)
-    while (platforms.length > 12) platforms.pop();
-
-    // -----------------------------------------------------------------------
-    // Step F: Build platform objects
-    // -----------------------------------------------------------------------
-
-    for (const plat of platforms) {
+    for (const sp of staircasePlatforms) {
         objects.push({
-            id: nextId(plat.isGround ? 'ground' : plat.isBridge ? 'bridge' : 'plat'),
+            id: nextId(sp.isGround ? 'ground' : 'plat'),
             type: 'platform',
-            label: plat.label,
-            confidence: plat.confidence,
-            bounds_normalized: plat.bounds,
-            surface_type: plat.category === 'furniture' ? 'solid' : 'solid',
-            category: plat.category === 'other' ? 'other' : plat.category,
-            enemy_spawn_anchor: plat.enemyAnchor,
+            label: sp.info.label,
+            confidence: sp.info.confidence,
+            bounds_normalized: sp.bounds,
+            surface_type: 'solid',
+            category: sp.info.category,
+            enemy_spawn_anchor: sp.info.enemyAnchor,
         });
     }
 
     // -----------------------------------------------------------------------
-    // Step G: Add obstacle objects from narrow detections
+    // Step F: Add collectible objects from food detections (placed on
+    //         staircase platforms, not at AI positions)
     // -----------------------------------------------------------------------
 
-    for (const det of obstacleDetections.slice(0, 4)) {
-        objects.push({
-            id: nextId('obs'),
-            type: 'obstacle',
-            label: det.label,
-            confidence: det.confidence,
-            bounds_normalized: det.bounds_normalized,
-            category: det.category,
-            enemy_spawn_anchor: det.category === 'plant' || det.category === 'electric',
-        });
-    }
+    const realPlatforms = staircasePlatforms.filter((p) => !p.isGround);
 
-    // -----------------------------------------------------------------------
-    // Step H: Add collectible objects from food detections
-    // -----------------------------------------------------------------------
-
-    for (const det of collectibleDetections.slice(0, 5)) {
+    for (let i = 0; i < collectibleDetections.slice(0, 5).length; i++) {
+        const det = collectibleDetections[i];
+        const plat = realPlatforms[i % realPlatforms.length];
         objects.push({
             id: nextId('col'),
             type: 'collectible',
             label: det.label,
             confidence: det.confidence,
-            bounds_normalized: det.bounds_normalized,
+            bounds_normalized: {
+                x: clamp(plat.bounds.x + plat.bounds.w * 0.3, 0.02, 0.95),
+                y: plat.bounds.y - 0.04,
+                w: 0.03,
+                h: 0.03,
+            },
             category: 'food',
         });
     }
 
     // -----------------------------------------------------------------------
-    // Step I: Player spawn — on ground, far left
+    // Step G: Player spawn — on ground, far left
     // -----------------------------------------------------------------------
 
-    const groundPlat = platforms.find((p) => p.isGround) || platforms[0];
     const playerSpawn: SpawnPoint = {
         x: 0.08,
-        y: groundPlat.bounds.y - ENTITY_OFFSET_Y,
+        y: GROUND_Y - ENTITY_OFFSET_Y,
     };
 
     // -----------------------------------------------------------------------
-    // Step J: Exit — on/near the highest platform, far right
+    // Step H: Exit — on the highest staircase platform, right side
     // -----------------------------------------------------------------------
 
-    // Highest = smallest Y
-    const sortedByHeight = [...platforms].sort((a, b) => a.bounds.y - b.bounds.y);
-    const highestPlat = sortedByHeight[0];
+    // Highest = smallest Y value
+    const sorted = [...realPlatforms].sort((a, b) => a.bounds.y - b.bounds.y);
+    const highestPlat = sorted[0];
     const exitSpawn: SpawnPoint = {
-        x: clamp(highestPlat.bounds.x + highestPlat.bounds.w - 0.05, 0.7, 0.95),
+        x: clamp(highestPlat.bounds.x + highestPlat.bounds.w - 0.04, 0.6, 0.95),
         y: highestPlat.bounds.y - ENTITY_OFFSET_Y,
     };
 
     // -----------------------------------------------------------------------
-    // Step K: Place pickups on platforms (not ground, not bridges)
+    // Step I: Place pickups on every other staircase platform
     // -----------------------------------------------------------------------
 
-    const pickupPlatforms = platforms.filter((p) => !p.isGround && !p.isBridge);
     const pickups: PickupSpawn[] = [];
-
-    // Place one pickup per non-ground/bridge platform
-    for (let i = 0; i < pickupPlatforms.length && pickups.length < 5; i++) {
-        const plat = pickupPlatforms[i];
+    for (let i = 0; i < realPlatforms.length && pickups.length < 6; i++) {
+        const plat = realPlatforms[i];
         pickups.push({
             x: clamp(plat.bounds.x + plat.bounds.w / 2, 0.05, 0.95),
             y: plat.bounds.y - ENTITY_OFFSET_Y,
@@ -377,41 +309,32 @@ export function buildLevel(input: DetectionResponse): SceneV1 {
         });
     }
 
-    // If we have fewer than 3, add some on bridge platforms
+    // Ensure at least 3 pickups — add on ground if needed
     if (pickups.length < 3) {
-        const bridgePlats = platforms.filter((p) => p.isBridge);
-        for (const bp of bridgePlats) {
-            if (pickups.length >= 4) break;
-            pickups.push({
-                x: clamp(bp.bounds.x + bp.bounds.w / 2, 0.05, 0.95),
-                y: bp.bounds.y - ENTITY_OFFSET_Y,
-                type: 'coin',
-            });
-        }
-    }
-
-    // If still fewer than 3, add on ground
-    if (pickups.length < 3) {
-        pickups.push({ x: 0.3, y: groundPlat.bounds.y - ENTITY_OFFSET_Y, type: 'coin' });
-        pickups.push({ x: 0.5, y: groundPlat.bounds.y - ENTITY_OFFSET_Y, type: 'coin' });
+        pickups.push({ x: 0.3, y: GROUND_Y - ENTITY_OFFSET_Y, type: 'coin' });
+        pickups.push({ x: 0.6, y: GROUND_Y - ENTITY_OFFSET_Y, type: 'coin' });
     }
 
     // -----------------------------------------------------------------------
-    // Step L: Place enemies on wider platforms
+    // Step J: Place 1–2 enemies on mid-height staircase platforms
     // -----------------------------------------------------------------------
-
-    const enemyPlatforms = platforms
-        .filter((p) => !p.isGround && !p.isBridge && p.bounds.w > 0.15)
-        .slice(0, 2);
 
     const enemies: EnemySpawn[] = [];
-    for (const plat of enemyPlatforms) {
+    // Pick platforms from the middle of the staircase (indices around platCount/3 and 2*platCount/3)
+    const midIdx1 = Math.floor(realPlatforms.length / 3);
+    const midIdx2 = Math.floor((realPlatforms.length * 2) / 3);
+    const enemyIndices = realPlatforms.length >= 4 ? [midIdx1, midIdx2] : [midIdx1];
+
+    for (const idx of enemyIndices) {
+        const plat = realPlatforms[idx];
+        if (!plat) continue;
         enemies.push({
             x: clamp(plat.bounds.x + plat.bounds.w / 2, 0.05, 0.95),
             y: plat.bounds.y - ENTITY_OFFSET_Y,
             type: 'walker',
         });
-        // Mark platform as enemy anchor
+
+        // Mark the corresponding platform object as enemy anchor
         const platObj = objects.find(
             (o) => o.type === 'platform' && o.bounds_normalized === plat.bounds
         );
@@ -419,7 +342,7 @@ export function buildLevel(input: DetectionResponse): SceneV1 {
     }
 
     // -----------------------------------------------------------------------
-    // Step M: Assemble final SceneV1
+    // Step K: Assemble final SceneV1
     // -----------------------------------------------------------------------
 
     const scene: SceneV1 = {
