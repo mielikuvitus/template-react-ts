@@ -51,3 +51,61 @@
     flex-direction: column;
     gap: 10px;
 }
+
+/* Share form */
+.win-overlay__share-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.glass-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 15px;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+
+.glass-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.glass-input:focus {
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Share status messages */
+.win-overlay__share-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    margin-bottom: 16px;
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.win-overlay__share-status--success {
+    color: #4ade80;
+}
+
+.win-overlay__share-status--error {
+    color: #f87171;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}

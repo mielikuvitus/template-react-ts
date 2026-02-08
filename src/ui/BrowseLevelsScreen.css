@@ -1,0 +1,189 @@
+/* Browse Levels Screen */
+
+.browse-screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    background: #0a0a1a;
+    color: white;
+    overflow: hidden;
+}
+
+.browse-screen__bg-logo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60vw;
+    max-width: 400px;
+    opacity: 0.03;
+    pointer-events: none;
+}
+
+/* Nav */
+.browse-screen__nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 2;
+}
+
+.browse-screen__back-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.browse-screen__back-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.browse-screen__nav-title {
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+/* Search */
+.browse-screen__search {
+    position: relative;
+    padding: 16px 20px;
+    z-index: 2;
+}
+
+.browse-screen__search-icon {
+    position: absolute;
+    left: 34px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.35);
+    pointer-events: none;
+}
+
+.browse-screen__search-input {
+    padding-left: 40px !important;
+    width: 100%;
+}
+
+/* Level list */
+.browse-screen__list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 1;
+}
+
+/* Status messages */
+.browse-screen__status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 40px 20px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 15px;
+    text-align: center;
+}
+
+.browse-screen__status--error {
+    color: #f87171;
+}
+
+/* Level card */
+.browse-screen__card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    text-align: left;
+    color: white;
+    font-family: inherit;
+    font-size: inherit;
+    width: 100%;
+}
+
+.browse-screen__card:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.browse-screen__card:disabled {
+    opacity: 0.6;
+}
+
+.browse-screen__card-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.browse-screen__card-level {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.browse-screen__card-player {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.browse-screen__card-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.browse-screen__card-score {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    color: #fbbf24;
+    font-weight: 600;
+}
+
+.browse-screen__card-date {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.browse-screen__card-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 14px;
+}

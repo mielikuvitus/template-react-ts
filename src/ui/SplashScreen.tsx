@@ -1,36 +1,39 @@
 import { useState, useEffect } from 'react';
+import { Camera, Users } from 'lucide-react';
 import { SplashLogo } from './SplashLogo';
+import { Icon } from './Icon';
+import { isSupabaseConfigured } from '../services/supabase';
 import './SplashScreen.css';
 
 interface SplashScreenProps {
     onComplete: () => void;
+    onBrowse?: () => void;
 }
 
-export function SplashScreen({ onComplete }: SplashScreenProps) {
-    const [fading, setFading] = useState(false);
+export function SplashScreen({ onComplete, onBrowse }: SplashScreenProps) {
+    const [ready, setReady] = useState(false);
 
+    // Brief animated entrance then show buttons
     useEffect(() => {
-        // Show title for 3 seconds, then start fade
-        const showTimer = setTimeout(() => {
-            setFading(true);
-        }, 3000);
-
-        // After fade completes (3s + 0.8s transition), notify parent
-        const completeTimer = setTimeout(() => {
-            onComplete();
-        }, 3800);
-
-        return () => {
-            clearTimeout(showTimer);
-            clearTimeout(completeTimer);
-        };
-    }, [onComplete]);
+        const timer = setTimeout(() => setReady(true), 800);
+        return () => clearTimeout(timer);
+    }, []);
 
     return (
-        <div className={`splash-screen ${fading ? 'splash-screen--fading' : ''}`}>
+        <div className="splash-screen">
             <div className="splash-screen__group">
                 <h1 className="splash-screen__title logo">Reality Jump</h1>
                 <SplashLogo className="splash-screen__logo" />
+            </div>
+            <div className={`splash-screen__buttons ${ready ? 'splash-screen__buttons--visible' : ''}`}>
+                <button className="glass-button glass-button--hero splash-btn" onClick={onComplete}>
+                    <Icon icon={Camera} size={18} /> Take a Photo
+                </button>
+                {isSupabaseConfigured() && onBrowse && (
+                    <button className="glass-button glass-button--secondary splash-btn" onClick={onBrowse}>
+                        <Icon icon={Users} size={18} /> Play Shared Level
+                    </button>
+                )}
             </div>
         </div>
     );

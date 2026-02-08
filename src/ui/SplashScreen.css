@@ -3,11 +3,11 @@
     inset: 0;
     z-index: 9999;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 48px;
     background: #000000;
-    opacity: 1;
-    transition: opacity 0.8s ease-out;
 }
 
 .splash-screen__group {
@@ -22,17 +22,32 @@
     font-size: 36px;
 }
 
-.splash-screen--fading {
-    opacity: 0;
-    pointer-events: none;
-}
-
 .splash-screen__title {
     font-size: 36px;
     color: #ffffff;
     margin: 0;
     letter-spacing: 0.02em;
     text-transform: uppercase;
+}
+
+/* Buttons container */
+.splash-screen__buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.splash-screen__buttons--visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.splash-btn {
+    min-width: 220px;
+    justify-content: center;
 }
 
 @media (max-width: 480px) {
