@@ -6,11 +6,20 @@
  * where type === 'platform'.
  *
  * Each platform is a Zone with a static physics body (invisible collider)
- * plus a visible rectangle overlay for feedback.
+ * plus a row of individual box tiles for the visual.
+ *
+ * VISUAL LAYOUT:
+ *   Each platform is tiled with square boxes (width = platform height).
+ *   The platform width is divided into the closest number of full boxes
+ *   that fit, then each box is slightly stretched/compressed to fill
+ *   the platform edge-to-edge with no gaps.
+ *
+ *   Tiles are stored on the zone via zone.setData('tiles', [...])
+ *   so they can be swapped for custom sprites later.
  *
  * Surface types get distinct colors:
  *   - solid (default): green
- *   - soft: purple — reduces player speed, dampens jump
+ *   - soft: purple — reduces player speed
  *
  * Minimum dimensions come from ComputedPhysics (world-relative).
  */
@@ -49,26 +58,37 @@ export function createPlatforms(
             continue;
         }
 
-        // Cap height so platforms look slim
-        const maxH = worldH * 0.025;
-        const h = Math.min(rect.h, maxH);
+        // Use the full height from the scene data (no cap)
+        const h = rect.h;
 
         const cx = rect.x + rect.w / 2;
-        const cy = rect.y + rect.h / 2 + (rect.h - h) / 2; // align to top of original bounds
+        const cy = rect.y + h / 2;
 
         const surfaceType = obj.surface_type ?? 'solid';
         const colors = SURFACE_COLORS[surfaceType] ?? DEFAULT_COLORS;
 
-        // Visual: semi-transparent rectangle with surface-type color
-        scene.add.rectangle(cx, cy, rect.w, h, colors.fill, 0.25)
-            .setStrokeStyle(1, colors.stroke, 0.5);
+        // --- Visual: fit square tiles (width = height), stretch slightly to fill ---
+        const tileCount = Math.max(1, Math.round(rect.w / h));
+        const boxW = rect.w / tileCount;
+        const leftEdge = rect.x; // left edge of the platform in world coords
+        const tiles: Phaser.GameObjects.Rectangle[] = [];
 
-        // Physics: use a Zone with a static body for reliable collisions
+        for (let i = 0; i < tileCount; i++) {
+            const boxCx = leftEdge + boxW * i + boxW / 2;
+            const tile = scene.add.rectangle(boxCx, cy, boxW, h, colors.fill, 0.25)
+                .setStrokeStyle(1, colors.stroke, 0.5);
+            tiles.push(tile);
+        }
+
+        // --- Physics: single zone spanning the full platform width ---
         const zone = scene.add.zone(cx, cy, rect.w, h);
         scene.physics.add.existing(zone, true); // true = static body
 
         // Store surface type so GameScene can read it during collisions
         zone.setData('surfaceType', surfaceType);
+
+        // Store tiles for future sprite swaps
+        zone.setData('tiles', tiles);
 
         group.add(zone);
     }

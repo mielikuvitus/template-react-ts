@@ -47,7 +47,7 @@ export function CaptureAndUploadScreen() {
     const [flowState, setFlowState] = useState<UploadFlowState | null>(null);
 
     // Dev panel state
-    const [devPanelOpen, setDevPanelOpen] = useState(true);
+    const [devPanelOpen, setDevPanelOpen] = useState(false);
     const [showImageInfo, setShowImageInfo] = useState(() => {
         const stored = localStorage.getItem(STORAGE_KEYS.showImageInfo);
         return stored === 'true';
