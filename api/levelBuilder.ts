@@ -100,9 +100,38 @@ const MAX_PLATFORMS = 8;
 const MIN_PLAT_W = 0.12;
 const MAX_PLAT_W = 0.35;
 
-/** Left-side and right-side X bands for the zigzag pattern. */
-const LEFT_BAND  = { min: 0.02, max: 0.38 };
-const RIGHT_BAND = { min: 0.52, max: 0.86 };
+/** Horizontal margins. */
+const X_MIN = 0.02;
+const X_MAX = 0.96;
+
+/** Layout strategy names. */
+type LayoutStrategy = 'zigzag' | 'spiral' | 'scattered' | 'sCurve';
+const STRATEGIES: LayoutStrategy[] = ['zigzag', 'spiral', 'scattered', 'sCurve'];
+
+// ---------------------------------------------------------------------------
+// Simple seeded PRNG (mulberry32) — deterministic per photo
+// ---------------------------------------------------------------------------
+
+function createRng(seed: number) {
+    let s = seed | 0;
+    return () => {
+        s = (s + 0x6d2b79f5) | 0;
+        let t = Math.imul(s ^ (s >>> 15), 1 | s);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+/** Derive a seed from detections so identical photos produce the same level. */
+function deriveSeed(input: DetectionResponse): number {
+    let hash = input.image.w * 7919 + input.image.h * 6271;
+    for (const d of input.detections) {
+        hash = ((hash << 5) - hash + d.label.length * 31 +
+            Math.round(d.bounds_normalized.x * 1000) +
+            Math.round(d.bounds_normalized.y * 1000)) | 0;
+    }
+    return hash;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -110,6 +139,10 @@ const RIGHT_BAND = { min: 0.52, max: 0.86 };
 
 function clamp(v: number, lo: number, hi: number): number {
     return Math.max(lo, Math.min(hi, v));
+}
+
+function lerp(a: number, b: number, t: number): number {
+    return a + (b - a) * t;
 }
 
 // ---------------------------------------------------------------------------
@@ -173,23 +206,23 @@ export function buildLevel(input: DetectionResponse): SceneV1 {
     }
 
     // -----------------------------------------------------------------------
-    // Step C: Build zigzag staircase layout
+    // Step C: Build platform layout using a randomly-selected strategy
     //
-    //     The vertical space from GROUND_Y to EXIT_Y is divided into
-    //     (platCount + 1) equal steps. Each platform alternates between
-    //     the left and right bands. This guarantees:
+    //     A seeded RNG (deterministic per photo) picks one of several
+    //     layout strategies and adds jitter to positions & sizes.
+    //     All strategies guarantee:
     //       - Every vertical gap ≤ MAX_JUMP_HEIGHT
-    //       - Every horizontal gap ≤ the band spacing (~0.14–0.50)
-    //       - A clear upward path from ground to exit
+    //       - A clear path from ground to exit
     // -----------------------------------------------------------------------
 
-    const totalRise = GROUND_Y - EXIT_Y; // positive, ~0.74
-    let vertStep = totalRise / (platCount + 1);
+    const rng = createRng(deriveSeed(input));
 
-    // Safety: if the step is too large for a jump, cap it
-    if (vertStep > MAX_JUMP_HEIGHT) {
-        vertStep = MAX_JUMP_HEIGHT;
-    }
+    // Pick a strategy
+    const strategy = STRATEGIES[Math.floor(rng() * STRATEGIES.length)];
+
+    const totalRise = GROUND_Y - EXIT_Y; // positive, ~0.74
+    const baseStep = totalRise / (platCount + 1);
+    const vertStep = Math.min(baseStep, MAX_JUMP_HEIGHT);
 
     interface StaircasePlatform {
         info: DetectionInfo;
@@ -199,24 +232,118 @@ export function buildLevel(input: DetectionResponse): SceneV1 {
 
     const staircasePlatforms: StaircasePlatform[] = [];
 
-    for (let i = 0; i < platCount; i++) {
-        const info = platformInfos[i];
-        const y = GROUND_Y - (i + 1) * vertStep;
+    /** Add jitter to width: ±30% variation */
+    const jitterWidth = (base: number): number => {
+        const factor = 0.7 + rng() * 0.6; // 0.7 – 1.3
+        return clamp(base * factor, MIN_PLAT_W, MAX_PLAT_W);
+    };
 
-        // Zigzag: even indices → left band, odd → right band
-        const band = i % 2 === 0 ? LEFT_BAND : RIGHT_BAND;
-        // Centre the platform within the band
-        const bandMid = (band.min + band.max) / 2;
-        const x = clamp(bandMid - info.width / 2, band.min, band.max - info.width);
+    /** Add vertical jitter: ±20% of the step */
+    const jitterY = (baseY: number, step: number): number => {
+        const offset = (rng() - 0.5) * step * 0.4;
+        return clamp(baseY + offset, EXIT_Y - 0.02, GROUND_Y - 0.04);
+    };
+
+    /** Random X within a range */
+    const randomX = (lo: number, hi: number, platW: number): number => {
+        const maxStart = Math.max(lo, hi - platW);
+        return clamp(lo + rng() * (maxStart - lo), X_MIN, X_MAX - platW);
+    };
+
+    // ---- Strategy implementations ----------------------------------------
+
+    if (strategy === 'zigzag') {
+        // Classic zigzag but with randomised band positions and jitter
+        for (let i = 0; i < platCount; i++) {
+            const info = platformInfos[i];
+            const w = jitterWidth(info.width);
+            const y = jitterY(GROUND_Y - (i + 1) * vertStep, vertStep);
+
+            // Alternate sides but with random offset within each half
+            const goLeft = i % 2 === 0;
+            const x = goLeft
+                ? randomX(X_MIN, 0.42, w)
+                : randomX(0.50, X_MAX, w);
+
+            staircasePlatforms.push({
+                info, bounds: { x, y, w, h: PLATFORM_THICKNESS }, isGround: false,
+            });
+        }
+
+    } else if (strategy === 'spiral') {
+        // Platforms spiral around the screen edges
+        for (let i = 0; i < platCount; i++) {
+            const info = platformInfos[i];
+            const w = jitterWidth(info.width);
+            const y = jitterY(GROUND_Y - (i + 1) * vertStep, vertStep);
+
+            // Cycle through 4 quadrants: left, right, centre-left, centre-right
+            const quadrant = i % 4;
+            let x: number;
+            if (quadrant === 0) x = randomX(X_MIN, 0.30, w);
+            else if (quadrant === 1) x = randomX(0.65, X_MAX, w);
+            else if (quadrant === 2) x = randomX(0.25, 0.55, w);
+            else x = randomX(0.45, 0.75, w);
+
+            staircasePlatforms.push({
+                info, bounds: { x, y, w, h: PLATFORM_THICKNESS }, isGround: false,
+            });
+        }
+
+    } else if (strategy === 'scattered') {
+        // Platforms placed with more random X positions across the full width
+        for (let i = 0; i < platCount; i++) {
+            const info = platformInfos[i];
+            const w = jitterWidth(info.width);
+            const y = jitterY(GROUND_Y - (i + 1) * vertStep, vertStep);
+
+            // Full-width random but biased away from edges
+            const x = randomX(X_MIN + 0.03, X_MAX - 0.03, w);
+
+            staircasePlatforms.push({
+                info, bounds: { x, y, w, h: PLATFORM_THICKNESS }, isGround: false,
+            });
+        }
+
+    } else {
+        // S-curve: smooth sinusoidal path from bottom-left to top-right
+        for (let i = 0; i < platCount; i++) {
+            const info = platformInfos[i];
+            const w = jitterWidth(info.width);
+            const y = jitterY(GROUND_Y - (i + 1) * vertStep, vertStep);
+
+            const progress = i / Math.max(platCount - 1, 1); // 0–1
+            // Sine wave across the width
+            const centreX = lerp(0.15, 0.80, (Math.sin(progress * Math.PI * 2 - Math.PI / 2) + 1) / 2);
+            const x = clamp(centreX - w / 2 + (rng() - 0.5) * 0.08, X_MIN, X_MAX - w);
+
+            staircasePlatforms.push({
+                info, bounds: { x, y, w, h: PLATFORM_THICKNESS }, isGround: false,
+            });
+        }
+    }
+
+    // ---- Add 1-2 bonus floating platforms for extra exploration -----------
+
+    const bonusCount = rng() < 0.6 ? 1 : 2;
+    for (let b = 0; b < bonusCount && staircasePlatforms.length < MAX_PLATFORMS + 2; b++) {
+        const w = MIN_PLAT_W + rng() * 0.06;
+        // Place between existing platforms vertically
+        const slotIdx = Math.floor(rng() * (staircasePlatforms.length - 1));
+        const above = staircasePlatforms[slotIdx];
+        const below = staircasePlatforms[Math.min(slotIdx + 1, staircasePlatforms.length - 1)];
+        if (!above || !below) continue;
+
+        const y = (above.bounds.y + below.bounds.y) / 2;
+        // Place on the opposite side from the nearby platform
+        const nearbyX = above.bounds.x + above.bounds.w / 2;
+        const x = nearbyX < 0.5
+            ? randomX(0.55, X_MAX, w)
+            : randomX(X_MIN, 0.40, w);
 
         staircasePlatforms.push({
-            info,
-            bounds: {
-                x: clamp(x, 0.0, 1.0 - info.width),
-                y: clamp(y, 0.05, 0.88),
-                w: info.width,
-                h: PLATFORM_THICKNESS,
-            },
+            info: { label: 'ledge', category: 'other', confidence: 1.0, width: w, enemyAnchor: false },
+            bounds: { x: clamp(x, X_MIN, X_MAX - w), y: clamp(y, 0.08, 0.88), w, h: PLATFORM_THICKNESS },
             isGround: false,
         });
     }
