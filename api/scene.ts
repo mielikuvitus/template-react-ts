@@ -1,28 +1,16 @@
-import { Router, Request, Response } from 'express';
-import multer from 'multer';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import formidable from 'formidable';
+import { readFileSync } from 'fs';
 import OpenAI from 'openai';
 
 const openai = new OpenAI(); // reads OPENAI_API_KEY from env
 
-// Configure multer to store files in memory (no disk storage)
-const upload = multer({
-    storage: multer.memoryStorage(),
-    limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB max file size
+export const config = {
+    api: {
+        bodyParser: false, // disable body parsing so formidable can handle multipart
     },
-    fileFilter: (_req, file, cb) => {
-        // Accept only image files
-        if (file.mimetype.startsWith('image/')) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only image files are allowed'));
-        }
-    },
-});
+};
 
-export const sceneRouter = Router();
-
-// System prompt instructs GPT-4o to return valid SceneV1 JSON
 const SYSTEM_PROMPT = `You are a computer-vision AI for a 2D platformer game called Reality Jump.
 
 You receive a photo of a real-world environment (e.g. a room, desk, outdoor scene).
@@ -83,33 +71,43 @@ SPAWN RULES:
 
 CRITICAL: Return ONLY the JSON object. No markdown fences, no explanation, no extra text.`;
 
-/**
- * POST /api/scene
- * Accepts multipart/form-data with an "image" field
- * Sends to OpenAI GPT-4o Vision, returns Scene JSON
- */
-sceneRouter.post('/', upload.single('image'), async (req: Request, res: Response) => {
-    const file = req.file;
-    const requestId = req.headers['x-request-id'] || 'no-request-id';
-    const timestamp = new Date().toISOString();
-
-    if (!file) {
-        console.log(`[${timestamp}] request=${requestId} error=no_image`);
-        res.status(400).json({
-            error: 'No image file provided',
-            hint: 'Send a multipart/form-data request with field name "image"',
+function parseMultipart(req: VercelRequest): Promise<{ buffer: Buffer; mimetype: string }> {
+    return new Promise((resolve, reject) => {
+        const form = formidable({
+            maxFileSize: 10 * 1024 * 1024,
+            filter: (part) => part.mimetype?.startsWith('image/') ?? false,
         });
-        return;
+
+        form.parse(req, (err, _fields, files) => {
+            if (err) return reject(err);
+
+            const uploaded = files.image;
+            if (!uploaded) return reject(new Error('No image field'));
+
+            const file = Array.isArray(uploaded) ? uploaded[0] : uploaded;
+            if (!file) return reject(new Error('No image file'));
+
+            const buffer = readFileSync(file.filepath);
+            resolve({ buffer, mimetype: file.mimetype || 'image/jpeg' });
+        });
+    });
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+    // Only accept POST
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    // Log received image info with request ID for tracing
-    console.log(`[${timestamp}] request=${requestId} received image size=${file.size} type=${file.mimetype}`);
+    const requestId = (req.headers['x-request-id'] as string) || 'no-request-id';
+    const timestamp = new Date().toISOString();
 
     try {
-        // Convert image buffer to base64 data URL
-        const base64Image = file.buffer.toString('base64');
-        const mimeType = file.mimetype || 'image/jpeg';
-        const dataUrl = `data:${mimeType};base64,${base64Image}`;
+        const { buffer, mimetype } = await parseMultipart(req);
+        console.log(`[${timestamp}] request=${requestId} image size=${buffer.length} type=${mimetype}`);
+
+        const base64Image = buffer.toString('base64');
+        const dataUrl = `data:${mimetype};base64,${base64Image}`;
 
         console.log(`[${timestamp}] request=${requestId} sending to OpenAI GPT-4o...`);
 
@@ -141,13 +139,12 @@ sceneRouter.post('/', upload.single('image'), async (req: Request, res: Response
         const raw = completion.choices?.[0]?.message?.content;
         if (!raw) {
             console.error(`[${timestamp}] request=${requestId} empty AI response`);
-            res.status(502).json({ error: 'Empty response from AI' });
-            return;
+            return res.status(502).json({ error: 'Empty response from AI' });
         }
 
         console.log(`[${timestamp}] request=${requestId} AI responded, length=${raw.length}`);
 
-        // Strip markdown fences if the model wrapped the JSON
+        // Strip markdown fences if present
         let cleaned = raw.trim();
         if (cleaned.startsWith('```')) {
             cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?\s*```$/, '');
@@ -158,50 +155,27 @@ sceneRouter.post('/', upload.single('image'), async (req: Request, res: Response
             parsed = JSON.parse(cleaned);
         } catch (parseErr) {
             console.error(`[${timestamp}] request=${requestId} JSON parse error:`, parseErr);
-            console.error(`[${timestamp}] request=${requestId} raw response:`, raw);
-            res.status(502).json({
+            return res.status(502).json({
                 error: 'AI returned invalid JSON',
                 details: parseErr instanceof Error ? parseErr.message : 'Unknown parse error',
                 raw: raw.substring(0, 500),
             });
-            return;
         }
 
         console.log(`[${timestamp}] request=${requestId} response sent status=200`);
-        res.json(parsed);
+        return res.status(200).json(parsed);
 
     } catch (err: unknown) {
         const apiErr = err as { status?: number; message?: string };
-        console.error(`[${timestamp}] request=${requestId} OpenAI error:`, apiErr.message || err);
+        console.error(`[${timestamp}] request=${requestId} error:`, apiErr.message || err);
 
         if (apiErr.status === 429) {
-            res.status(429).json({ error: 'Rate limited by AI provider. Try again shortly.' });
-            return;
+            return res.status(429).json({ error: 'Rate limited by AI provider. Try again shortly.' });
         }
 
-        res.status(500).json({
+        return res.status(500).json({
             error: 'AI processing failed',
             details: apiErr.message || 'Unknown error',
         });
     }
-});
-
-// Error handling middleware for multer errors
-sceneRouter.use((err: Error, _req: Request, res: Response, _next: Function) => {
-    if (err instanceof multer.MulterError) {
-        if (err.code === 'LIMIT_FILE_SIZE') {
-            res.status(413).json({ error: 'File too large. Maximum size is 10MB.' });
-            return;
-        }
-        res.status(400).json({ error: err.message });
-        return;
-    }
-    
-    if (err.message === 'Only image files are allowed') {
-        res.status(415).json({ error: err.message });
-        return;
-    }
-
-    console.error('Server error:', err);
-    res.status(500).json({ error: 'Internal server error' });
-});
+}

@@ -31,37 +31,31 @@ POST /api/scene
 {
   "version": 1,
   "image": {
-    "w": 1024,
-    "h": 768
+    "w": 1280,
+    "h": 720
   },
-  "detections": [
+  "objects": [
     {
-      "id": "det_001",
-      "type": "object",
-      "label": "chair",
-      "confidence": 0.92,
-      "bbox": { "x": 100, "y": 200, "w": 150, "h": 200 }
+      "id": "plat_1",
+      "type": "platform",
+      "label": "table",
+      "confidence": 0.95,
+      "bounds_normalized": { "x": 0.05, "y": 0.75, "w": 0.4, "h": 0.06 },
+      "surface_type": "solid",
+      "category": "furniture",
+      "enemy_spawn_anchor": false
     }
   ],
   "spawns": {
-    "player": { "x": 0.1, "y": 0.9 },
-    "exit": { "x": 0.9, "y": 0.1 },
+    "player": { "x": 0.1, "y": 0.85 },
+    "exit": { "x": 0.9, "y": 0.2 },
     "enemies": [
       { "x": 0.5, "y": 0.5, "type": "walker" }
     ],
     "pickups": [
-      { "x": 0.3, "y": 0.7, "type": "coin" }
+      { "x": 0.3, "y": 0.6, "type": "coin" }
     ]
   },
-  "surfaces": [
-    {
-      "type": "platform",
-      "points": [
-        { "x": 0.0, "y": 0.8 },
-        { "x": 0.4, "y": 0.8 }
-      ]
-    }
-  ],
   "rules": []
 }
 ```

@@ -166,7 +166,7 @@ export function UploadFlow({
 
             console.info(
                 `[${formatNow()}] Upload success: ${newRequestId}`,
-                `detections=${response.detections.length}`,
+                `objects=${(response as any).objects?.length ?? 0}`,
                 `enemies=${response.spawns.enemies.length}`,
                 `pickups=${response.spawns.pickups.length}`,
             );

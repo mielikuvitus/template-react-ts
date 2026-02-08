@@ -34,15 +34,14 @@ Content-Type: application/json
 
 {
   "version": 1,
-  "image": { "w": 1024, "h": 768 },
-  "detections": [...],
+  "image": { "w": 1280, "h": 720 },
+  "objects": [...],
   "spawns": {
     "player": { "x": ..., "y": ... },
     "exit": { "x": ..., "y": ... },
     "enemies": [...],
     "pickups": [...]
   },
-  "surfaces": [...],
   "rules": [...]
 }
 ```

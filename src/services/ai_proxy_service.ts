@@ -18,14 +18,13 @@
  *   {
  *     "version": 1,
  *     "image": { "w": number, "h": number },
- *     "detections": [...],
+ *     "objects": [...],
  *     "spawns": {
  *       "player": { "x": number, "y": number },
  *       "exit": { "x": number, "y": number },
  *       "enemies": [...],
  *       "pickups": [...]
  *     },
- *     "surfaces": [...],
  *     "rules": [...]
  *   }
  * 
@@ -49,19 +48,17 @@ export interface UploadParams {
 /**
  * Raw response from backend. This is a loose type for transport only.
  * Actual validation happens via Zod (parseSceneV1) before data reaches Phaser.
- * The backend may return additional fields (e.g. "objects") which Zod validates.
  */
 export interface SceneResponse {
     version: number;
     image: { w: number; h: number };
-    detections: unknown[];
+    objects: unknown[];
     spawns: {
         player: { x: number; y: number };
         exit: { x: number; y: number };
         enemies: unknown[];
         pickups: unknown[];
     };
-    surfaces: unknown[];
     rules: unknown[];
 }
 
@@ -90,9 +87,12 @@ export async function uploadImageForScene(params: UploadParams): Promise<SceneRe
     const {
         blob,
         filename = 'photo.jpg',
-        endpoint = 'http://localhost:3001/api/scene',
+        endpoint,
         requestId,
     } = params;
+
+    // Use provided endpoint, or relative URL (works for both Vite proxy in dev and Vercel in prod)
+    const url = endpoint || '/api/scene';
 
     const formData = new FormData();
     formData.append('image', blob, filename);
@@ -102,7 +102,7 @@ export async function uploadImageForScene(params: UploadParams): Promise<SceneRe
         headers['x-request-id'] = requestId;
     }
 
-    const response = await fetch(endpoint, {
+    const response = await fetch(url, {
         method: 'POST',
         headers,
         body: formData,

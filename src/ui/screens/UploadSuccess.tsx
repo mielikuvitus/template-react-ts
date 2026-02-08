@@ -32,7 +32,7 @@ export function UploadSuccess({
     const raw = sceneData as unknown as Record<string, unknown>;
     const objectCount = Array.isArray(raw.objects)
         ? raw.objects.length
-        : sceneData.detections.length;
+        : 0;
 
     return (
         <div className="upload-screen">
