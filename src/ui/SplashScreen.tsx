@@ -30,7 +30,7 @@ export function SplashScreen({ onComplete, onBrowse }: SplashScreenProps) {
             </div>
             <div className={`splash-screen__buttons ${ready ? 'splash-screen__buttons--visible' : ''}`}>
                 <button className="glass-button glass-button--hero splash-btn" onClick={onComplete}>
-                    <Icon icon={Camera} size={18} /> Take a Photo
+                    Start
                 </button>
                 {isSupabaseConfigured() && onBrowse && (
                     <button className="glass-button glass-button--secondary splash-btn" onClick={onBrowse}>
