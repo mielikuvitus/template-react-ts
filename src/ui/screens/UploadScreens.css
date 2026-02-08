@@ -88,6 +88,26 @@
     100% { transform: translateX(400%); }
 }
 
+/* Running Stick Man */
+.loading-runner {
+    display: flex;
+    justify-content: center;
+    margin: 24px 0 0;
+    height: 60px;
+    padding-top: 10px;
+}
+
+.loading-runner__figure {
+    height: 48px;
+    width: auto;
+    animation: runner-bounce 0.5s ease-in-out infinite;
+}
+
+@keyframes runner-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
 /* Loading Dots */
 .loading-dots {
     display: inline-flex;

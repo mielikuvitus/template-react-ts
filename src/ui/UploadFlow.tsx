@@ -141,9 +141,9 @@ export function UploadFlow({
 
         console.info(`[${formatNow()}] Upload started: ${newRequestId}${mockMode ? ' (MOCK MODE)' : ''}`);
 
-        // Mock mode: return fake data after a short delay
+        // Mock mode: return fake data after a delay (longer to preview loading screen)
         if (mockMode) {
-            await new Promise(resolve => setTimeout(resolve, 800));
+            await new Promise(resolve => setTimeout(resolve, 3000));
             console.info(
                 `[${formatNow()}] Mock response: ${newRequestId}`,
                 `objects=${(Array.isArray((MOCK_SCENE_RESPONSE as unknown as Record<string, unknown>).objects) ? ((MOCK_SCENE_RESPONSE as unknown as Record<string, unknown>).objects as unknown[]).length : 0)}`,

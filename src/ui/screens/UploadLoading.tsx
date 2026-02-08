@@ -5,6 +5,7 @@
  * Displays while image is being uploaded to the backend.
  * 
  * Shows:
+ * - Running stick man animation
  * - Request ID for tracing (matches backend logs)
  * - Animated loading bar
  * - Status message
@@ -13,6 +14,7 @@
  * - requestId: string - The unique request ID for this upload
  */
 
+import { SplashLogo } from '../SplashLogo';
 import './UploadScreens.css';
 
 interface UploadLoadingProps {
@@ -24,8 +26,12 @@ export function UploadLoading({ requestId }: UploadLoadingProps) {
         <div className="upload-screen">
             <div className="glass-card">
                 <div className="request-id">{requestId}</div>
+
+                <div className="loading-runner">
+                    <SplashLogo className="loading-runner__figure" />
+                </div>
                 
-                <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                <div style={{ marginTop: '12px', textAlign: 'center' }}>
                     <h2 className="screen-title">
                         Generating Scene
                         <span className="loading-dots">
