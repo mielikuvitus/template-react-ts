@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Readable } from 'stream';
-import { buildLevel, DetectionResponse } from '../server/levelBuilder';
+import { buildLevel, DetectionResponse } from './levelBuilder';
 
 export const config = {
     maxDuration: 60,
